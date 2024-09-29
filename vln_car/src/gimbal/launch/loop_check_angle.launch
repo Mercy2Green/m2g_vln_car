@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="gimbal" type="loop_check_angle.py" name="loop_check_angle" output="screen"/>
+</launch>
