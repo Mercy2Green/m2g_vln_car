@@ -71,14 +71,18 @@ class GimblaNode:
 
             target_angle = self.test_control_angle(axis='horizontal')
             self.target_angle_pub.publish(target_angle)
-
-            while not self.get_angle_and_check(target_angle, 0.05, True):
-                # self.target_angle_pub.publish(target_angle)
-                control_data_frame = frame_control_angle(angle=target_angle, axis='horizontal')
-                self.ser.write(control_data_frame)
-                check_angle_frame = frame_check_angle(axis='horizontal', address=self.address)
-                self.ser.write(check_angle_frame)
-                sleep(0.5)
+            sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle
+            if target_angle is not None:
+                self.target_angle_pub.publish(target_angle)
+                while not self.get_angle_and_check(target_angle, 0.05, True):
+                    # self.target_angle_pub.publish(target_angle)
+                    control_data_frame = frame_control_angle(angle=target_angle, axis='horizontal')
+                    self.ser.write(control_data_frame)
+                    check_angle_frame = frame_check_angle(axis='horizontal', address=self.address)
+                    self.ser.write(check_angle_frame)
+                    sleep(0.5)
+            else:
+                continue
                 
 
     def current_target_angle(self, msg):
@@ -105,6 +109,7 @@ class GimblaNode:
             return angle
         except ValueError:
             rospy.logerr("Invalid input. Please enter a valid number.")
+            return None
 
     def check_angle_if_in_place(self, msg):
         # The first angle is horizontal angle, the second angle is vertical angle
@@ -118,7 +123,8 @@ class GimblaNode:
         if sub == False:
             angle_range = [target_angle-acc, target_angle+acc]
         else:
-            if self.target_angle is not None:
+            target_angle = self.target_angle
+            if target_angle is not None:
                 angle_range = [target_angle-acc, target_angle+acc]
             else:
                 return False
