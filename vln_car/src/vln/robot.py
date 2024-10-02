@@ -1,6 +1,12 @@
 #! /usr/bin/env python
 
-from interbotix_xs_modules.locobot import InterbotixLocobotXS
+# import debugpy
+# debugpy.listen(5678)
+# debugpy.wait_for_client()
+
+
+import os
+# from interbotix_xs_modules.locobot import InterbotixLocobotXS
 import socket
 import copy
 import threading
@@ -11,12 +17,14 @@ import rospy
 from abc import ABCMeta, abstractmethod
 import message_filters
 import cv2
-import os
+
 import time
 import paramiko
 import rospy
 from std_srvs.srv import *
 import pickle
+
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 # This script commands arbitrary positions to the pan-tilt servos when using Time-Based-Profile for its Drive Mode
 # When operating motors in 'position' control mode, Time-Based-Profile allows you to easily set the duration of a particular movement
 #
@@ -29,8 +37,8 @@ angular_speed = np.pi/3
 move_time = 0.1
 turn_time = 0.1
 
-height=480
-width=640
+height=240  
+width=424
 channel=3
 
 Server_IP = '10.120.17.98'
@@ -107,16 +115,16 @@ class RGBD(object):
         :param configs: configurations for camera
         :type configs: YACS CfgNode
         """
+        rospy.init_node('rgbd', anonymous=True)
+
         self.cv_bridge = CvBridge()
         self.camera_img_lock = threading.RLock()
         self.rgb_img = None
         self.depth_img = None
 
-
-        rgb_topic = "/locobot/camera/color/image_raw"
+        rgb_topic = '/camera/color/image_raw'
         self.rgb_sub = message_filters.Subscriber(rgb_topic, Image)
-        depth_topic = "/locobot/camera/aligned_depth_to_color/image_raw"
-
+        depth_topic = '/camera/depth/image_raw'
         self.depth_sub = message_filters.Subscriber(depth_topic, Image)
         img_subs = [self.rgb_sub, self.depth_sub]
         self.sync = message_filters.ApproximateTimeSynchronizer(
@@ -124,7 +132,9 @@ class RGBD(object):
         )
         self.sync.registerCallback(self._sync_callback)
         while self.rgb_img is None and not rospy.is_shutdown(): 
-            pass
+            time.sleep(1)
+            print('Waiting for RGBD image...')
+        print('RGBD image received.')
 
     def _sync_callback(self, rgb, depth):
         self.camera_img_lock.acquire()
@@ -165,7 +175,7 @@ class RGBD(object):
             #valid = depth > 200
             #valid = np.logical_and(valid, depth < 2000)
             #depth = depth*valid
-            depth = depth.reshape(480,640)
+            depth = depth.reshape(height,width)
             depth_mapped = cv2.applyColorMap(cv2.convertScaleAbs(depth, alpha=0.3), cv2.COLORMAP_JET)
 
         return depth, depth_mapped
@@ -175,77 +185,97 @@ class RGBD(object):
 def main():
 
     start_time = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
-    locobot = InterbotixLocobotXS(robot_model="locobot_wx250s", use_move_base_action=True)
+    # locobot = InterbotixLocobotXS(robot_model="locobot_wx250s", use_move_base_action=True)
     rgbd=RGBD()
     rgb_client=TCPClient(Server_IP,5001)
     depth_client=TCPClient(Server_IP,5002)
     location_client=TCPClient(Server_IP,5003)
     action_server = TCPServer(Robot_IP,5000)
 
-    locobot.camera.pan_tilt_go_home() 
+    # locobot.camera.pan_tilt_go_home() 
     # locobot.base.move_to_pose(0,0,0,wait=True)
     # locobot.base.mb_client.wait_for_result()
 
     while not rospy.is_shutdown():
+        # print('Waiting for action...')
 
         ### robot location [x,y,direction]
-        #location = locobot.base.get_locobot_position()
-        location = locobot.base.get_odom()
+        # location = locobot.base.get_odom()
+
+        ########## Explaination of the location
+        # def base_odom_cb(self, msg):
+        #     self.odom = msg.pose.pose
+        ### Get the 2D pose of the robot w.r.t. the robot 'odom' frame
+        ### @return pose - list containing the [x, y, yaw] of the robot w.r.t. the odom frame
+        # def get_odom(self):
+        #     quat = (
+        #         self.odom.orientation.x,
+        #         self.odom.orientation.y,
+        #         self.odom.orientation.z,
+        #         self.odom.orientation.w
+        #     )
+        #     return [self.odom.position.x, self.odom.position.y, euler_from_quaternion(quat)[2]]
+
+
+
+        Test_location = [0.0,0.0,0.0]
+
         #### rgbd image
         rgb = rgbd.get_rgb()
         depth, depth_mapped = rgbd.get_depth()       
-        
+
         rgb_client.send_data(rgb)
         depth_client.send_data(depth)
-        location_client.send_data(location)
+        location_client.send_data(Test_location)
+        # location_client.send_data(location)
         action = action_server.recv_data()
         print(action)
         #locobot.camera.pan_tilt_go_home() 
 
-        action_type = action[0].item()
-        if action_type == -1: # Point Navigation
-            locobot.base.move_to_pose(action[1].item(),action[2].item(),action[3].item(),wait=True)
-            locobot.base.mb_client.wait_for_result()
+        # action_type = action[0].item()
+        # if action_type == -1: # Point Navigation
+        #     locobot.base.move_to_pose(action[1].item(),action[2].item(),action[3].item(),wait=True)
+        #     locobot.base.mb_client.wait_for_result()
 
-        else: # Atomic Actions
-            action_value = action[1].item()
-            if action_type==0: #forward
-                locobot.base.move(linear_speed, 0, move_time*action_value)
-                #locobot.base.mb_client.wait_for_result()
+        # else: # Atomic Actions
+        #     action_value = action[1].item()
+        #     if action_type==0: #forward
+        #         locobot.base.move(linear_speed, 0, move_time*action_value)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==1: #backward
-                locobot.base.move(-linear_speed, 0, move_time*action_value)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==1: #backward
+        #         locobot.base.move(-linear_speed, 0, move_time*action_value)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==2: #left
-                locobot.base.move(0, angular_speed, move_time*action_value)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==2: #left
+        #         locobot.base.move(0, angular_speed, move_time*action_value)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==3 : #right
-                locobot.base.move(0, -angular_speed, move_time*action_value)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==3 : #right
+        #         locobot.base.move(0, -angular_speed, move_time*action_value)
+        #         #locobot.base.mb_client.wait_for_result()
        
-            elif action_type==4:  # camera down 30-degree
-                locobot.camera.pan_tilt_move(0, np.pi/6)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==4:  # camera down 30-degree
+        #         locobot.camera.pan_tilt_move(0, np.pi/6)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==5:  # camera up 30-degree
-                locobot.camera.pan_tilt_move(0, -np.pi/6)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==5:  # camera up 30-degree
+        #         locobot.camera.pan_tilt_move(0, -np.pi/6)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==6:  # camera left 30-degree
-                locobot.camera.pan_tilt_move(np.pi/6, 0)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==6:  # camera left 30-degree
+        #         locobot.camera.pan_tilt_move(np.pi/6, 0)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==7:  # camera right 30
-                locobot.camera.pan_tilt_move(-np.pi/6, 0)
-                #locobot.base.mb_client.wait_for_result()
+        #     elif action_type==7:  # camera right 30
+        #         locobot.camera.pan_tilt_move(-np.pi/6, 0)
+        #         #locobot.base.mb_client.wait_for_result()
 
-            elif action_type==8:  # camera go home
-                locobot.camera.pan_tilt_go_home() 
-                #locobot.base.mb_client.wait_for_result()
-            else:
-                print('Received an incorrect instruction!')
+        #     elif action_type==8:  # camera go home
+        #         locobot.camera.pan_tilt_go_home() 
+        #         #locobot.base.mb_client.wait_for_result()
+        #     else:
+        #         print('Received an incorrect instruction!')
 
 if __name__=='__main__':
     main()
