@@ -4,7 +4,7 @@ from interbotix_xs_modules.locobot import InterbotixLocobotXS
 import socket
 import copy
 import threading
-from cv_bridge import CvBridge
+from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 import numpy as np
 import rospy
@@ -33,8 +33,8 @@ height=480
 width=640
 channel=3
 
-Server_IP = '192.168.101.75'
-Robot_IP = '192.168.101.195'
+Server_IP = '10.120.17.98'
+Robot_IP = '10.12.125.172'
 
 class TCPClient:
     def __init__(self,host:str,port:int):
