@@ -298,7 +298,7 @@ def get_angle_from_frame(bytes_frame):
 
 if __name__ == '__main__':
     try:
-        node = GimblaNode(portx="/dev/ttyUSB1", bps=2400, timex=5, address=1)
+        node = GimblaNode(portx="/dev/ttyUSB0", bps=2400, timex=5, address=1)
         node.run()
     except rospy.ROSInterruptException:
         pass
