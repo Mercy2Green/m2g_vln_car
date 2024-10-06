@@ -1,0 +1,8 @@
+prefix=/home/uav/m2g_vln_car/vln_car/install
+
+Name: gimbal
+Description: Description of gimbal
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

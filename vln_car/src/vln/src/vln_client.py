@@ -1,0 +1,349 @@
+#! /usr/bin/env python
+
+# import debugpy
+# debugpy.listen(5678)
+# debugpy.wait_for_client()
+
+
+import os
+# from interbotix_xs_modules.locobot import InterbotixLocobotXS
+from ranger_mini_2_interface import Ranger_mini_2_interface
+import socket
+import copy
+import threading
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
+from nav_msgs.msg import Odometry
+import numpy as np
+import rospy
+from abc import ABCMeta, abstractmethod
+import message_filters
+import cv2
+
+import time
+import paramiko
+import rospy
+from std_srvs.srv import *
+import pickle
+
+from std_msgs.msg import Float32, Float32MultiArray
+
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+# This script commands arbitrary positions to the pan-tilt servos when using Time-Based-Profile for its Drive Mode
+# When operating motors in 'position' control mode, Time-Based-Profile allows you to easily set the duration of a particular movement
+#
+# To get started, open a terminal and type...
+# 'roslaunch interbotix_xslocobot_control xslocobot_python.launch robot_model:=locobot_base'
+# Then change to this directory and type 'python pan_tilt_control.py'
+    
+linear_speed = 0.2
+angular_speed = np.pi/3
+move_time = 0.1
+turn_time = 0.1
+
+height=720  
+width=1280
+channel=3
+
+Server_IP = '10.120.17.98'
+Robot_IP = '10.12.125.172'
+
+class TCPClient:
+    def __init__(self,host:str,port:int):
+        self.client=socket.socket()
+        start_state = False
+        while start_state==False:
+            try:
+                self.client.connect((host,port))
+                start_state = True
+                print('Client Start.')
+            except:
+                time.sleep(1)
+
+    def send_data(self,data:bytes):
+        data = pickle.dumps(data)
+        self.client.send(pickle.dumps(len(data)).ljust(64))
+        self.client.sendall(data)
+
+    def close(self):
+        self.client.close()
+
+class TCPServer:
+    def __init__(self,host:str,port:int):
+        self.server=socket.socket()
+        start_state = False
+        while start_state==False:
+            try:
+                self.server.bind((host,port))
+                self.server.listen(1)
+                start_state = True
+                print('Server Start.')
+            except:
+                time.sleep(1)
+        self.client_socket, self.clientAddr = self.server.accept()
+
+    def recv_data(self):
+        while True:
+            try:
+                data_len = self.client_socket.recv(64)
+                break
+            except:
+                time.sleep(1)
+
+        data_len = pickle.loads(data_len)
+        buffer = b"" 
+        while True:
+            received_data = self.client_socket.recv(512)
+            buffer = buffer + received_data 
+            if len(buffer) == data_len: 
+                break
+        data = pickle.loads(buffer) 
+        return data
+
+    def close(self):
+        self.server.close()
+        
+class RGBD(object):
+    """
+    This is a parent class on which the robot
+    specific Camera classes would be built.
+    """
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        """
+        Constructor for Camera parent class.
+        :param configs: configurations for camera
+        :type configs: YACS CfgNode
+        """
+        rospy.init_node('rgbd', anonymous=True)
+
+        self.cv_bridge = CvBridge()
+        self.camera_img_lock = threading.RLock()
+        self.rgb_img = None
+        self.depth_img = None
+
+        rgb_topic = '/camera/color/image_raw'
+        self.rgb_sub = message_filters.Subscriber(rgb_topic, Image)
+        depth_topic = '/camera/depth/image_raw'
+        self.depth_sub = message_filters.Subscriber(depth_topic, Image)
+
+
+        img_subs = [self.rgb_sub, self.depth_sub]
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            img_subs, queue_size=10, slop=0.2
+        )
+        self.sync.registerCallback(self._sync_callback)
+
+        while self.rgb_img is None and not rospy.is_shutdown(): 
+            time.sleep(1)
+            print('Waiting for RGBD image...')
+        print('RGBD image received.')
+
+    def _sync_callback(self, rgb, depth):
+        self.camera_img_lock.acquire()
+        try:
+            self.rgb_img = self.cv_bridge.imgmsg_to_cv2(rgb, "bgr8")
+            self.rgb_img = self.rgb_img[:, :, ::-1]
+            self.depth_img = self.cv_bridge.imgmsg_to_cv2(depth, "passthrough")
+
+        except CvBridgeError as e:
+            rospy.logerr(e)
+        self.camera_img_lock.release()
+
+    def get_rgb(self):
+        """
+        This function returns the RGB image perceived by the camera.
+        :rtype: np.ndarray or None
+        """
+        self.camera_img_lock.acquire()
+        rgb = copy.deepcopy(self.rgb_img)
+        self.camera_img_lock.release()
+        return rgb
+
+    def get_depth(self):
+        """
+        This function returns the depth image perceived by the camera.
+        
+        The depth image is in meters.
+        
+        :rtype: np.ndarray or None
+        """
+        self.camera_img_lock.acquire()
+        depth = copy.deepcopy(self.depth_img)
+        self.camera_img_lock.release()
+        if depth is not None:
+            depth = depth / 1000.
+            ### depth threshold 0.2m - 2m
+            depth = depth.reshape(-1)
+            #valid = depth > 200
+            #valid = np.logical_and(valid, depth < 2000)
+            #depth = depth*valid
+            depth = depth.reshape(height,width)
+            depth_mapped = cv2.applyColorMap(cv2.convertScaleAbs(depth, alpha=0.3), cv2.COLORMAP_JET)
+
+        return depth, depth_mapped
+
+class Odom(object):
+
+    def __init__(
+            self,
+            odometry_topic = '/vins_fusion/odometry') -> None:
+
+        self.odom = None
+
+        self.odometry_topic = odometry_topic
+        self.odometry_sub = rospy.Subscriber(self.odometry_topic, Odometry, self._odom_callback)
+
+        while self.odom is None and not rospy.is_shutdown(): 
+            time.sleep(1)
+            print('Waiting for odom...')
+        print('Odom received.')
+
+    def get_odom(self):
+        quat = (
+            self.odom.orientation.x,
+            self.odom.orientation.y,
+            self.odom.orientation.z,
+            self.odom.orientation.w
+        )
+        return [self.odom.position.x, self.odom.position.y, euler_from_quaternion(quat)[2]]
+    
+    def _odom_callback(self, msg):
+        self.odom = msg.pose.pose
+
+class Gimbla_Server(object):
+
+    def __init__(
+            self,
+            control_topic = 'gimbla_target_angle',
+            horizontal_angle_topic = 'gimbla_horizontal_angle') -> None:
+        
+        self.control_topic = control_topic
+        self.horizontal_angle_topic = horizontal_angle_topic
+
+        self.horizontal_angle = 0
+        self.target_angle = None
+
+        self.control_pub = rospy.Publisher('/gimbla_target_angle', Float32, queue_size=2)
+        self.horizontal_angle_sub = rospy.Subscriber('/gimbla_target_angle', Float32, self.horizontal_angle_callback)
+
+    def horizontal_angle_callback(self, msg):
+        self.horizontal_angle = msg.data
+
+    def control_angle(self, angle):
+        self.control_pub.publish(angle)
+
+
+def main():
+
+    start_time = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
+    # locobot = InterbotixLocobotXS(robot_model="locobot_wx250s", use_move_base_action=True)
+
+    robot_ranger = Ranger_mini_2_interface(
+        robot_name="ranger_mini_2",
+        use_move_base_action=False,
+        pub_base_command_name="/cmd_vel",
+        sub_base_odom_name="/odom",
+    )
+
+    rgbd = RGBD()
+    odom = Odom()
+
+    gimbal_server = Gimbla_Server(control_topic = 'gimbla_target_angle',
+            horizontal_angle_topic = 'gimbla_horizontal_angle')
+    
+    rgb_client=TCPClient(Server_IP,5001)
+    depth_client=TCPClient(Server_IP,5002)
+    location_client=TCPClient(Server_IP,5003)
+    action_server = TCPServer(Robot_IP,5000)
+
+
+    # locobot.camera.pan_tilt_go_home() 
+    # locobot.base.move_to_pose(0,0,0,wait=True)
+    # locobot.base.mb_client.wait_for_result()
+
+    robot_ranger.move(0, 0, 0, wait=True)
+    robot_ranger.mb_client.wait_for_result()
+
+    while not rospy.is_shutdown():
+        print('Waiting for action...')
+
+        # ## robot location [x,y,direction]
+        # location = locobot.base.get_odom()
+        location = robot_ranger.get_odom()
+
+        #### rgbd image
+        rgb = rgbd.get_rgb()
+        depth, depth_mapped = rgbd.get_depth()
+        location = odom.get_odom()
+
+        print(location)
+
+        rgb_client.send_data(rgb)
+        depth_client.send_data(depth)
+        location_client.send_data(location)
+        # location_client.send_data(location)
+        action = action_server.recv_data()
+        print(action)
+        #locobot.camera.pan_tilt_go_home() 
+
+        action_type = action[0].item()
+
+        # if action_type == 3.: # Point Navigation):
+        #     action_value = action[1].item()
+        #     if action_value == 12.:
+        #         print('got control signal')
+        #         gimbal_server.control_angle(30)
+        #         while gimbal_server.horizontal_angle > 29:
+        #             print('Gimbal arrived.')
+        #             gimbal_server.control_angle(0)
+        #             print('Gimbal go home.')
+
+        if action_type == -1:  # Point Navigation
+            robot_ranger.move_to_pose(action[1].item(), action[2].item(), action[3].item(), wait=True)
+            robot_ranger.mb_client.wait_for_result()
+
+        else:  # Atomic Actions
+            action_value = action[1].item()
+            if action_type == 0:  # forward
+                robot_ranger.move(linear_speed, 0, move_time * action_value)
+                # robot_ranger.mb_client.wait_for_result()
+
+            elif action_type == 1:  # backward
+                robot_ranger.move(-linear_speed, 0, move_time * action_value)
+                # robot_ranger.mb_client.wait_for_result()
+
+            elif action_type == 2:  # left
+                robot_ranger.move(0, angular_speed, move_time * action_value)
+                # robot_ranger.mb_client.wait_for_result()
+
+            elif action_type == 3:  # right
+                robot_ranger.move(0, -angular_speed, move_time * action_value)
+                # robot_ranger.mb_client.wait_for_result()
+
+            # elif action_type == 4:  # camera down 30-degree
+            #     robot_ranger.camera.pan_tilt_move(0, np.pi / 6)
+            #     # robot_ranger.mb_client.wait_for_result()
+
+            # elif action_type == 5:  # camera up 30-degree
+            #     robot_ranger.camera.pan_tilt_move(0, -np.pi / 6)
+            #     # robot_ranger.mb_client.wait_for_result()
+
+            # elif action_type == 6:  # camera left 30-degree
+            #     robot_ranger.camera.pan_tilt_move(np.pi / 6, 0)
+            #     # robot_ranger.mb_client.wait_for_result()
+
+            # elif action_type == 7:  # camera right 30-degree
+            #     robot_ranger.camera.pan_tilt_move(-np.pi / 6, 0)
+            #     # robot_ranger.mb_client.wait_for_result()
+
+            # elif action_type == 8:  # camera go home
+            #     robot_ranger.camera.pan_tilt_go_home()
+            #     # robot_ranger.mb_client.wait_for_result()
+            else:
+                print('Received an incorrect instruction!')
+
+if __name__=='__main__':
+    main()

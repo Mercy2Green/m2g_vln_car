@@ -1,6 +1,7 @@
-*/build/
+vln_car/build/
 */devel/
-
+*/install/
+*/build/
 
 # Prerequisites
 *.d

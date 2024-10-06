@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="gimbal" type="gimbal_node.py" name="gimbal_node" output="screen"/>
+</launch>

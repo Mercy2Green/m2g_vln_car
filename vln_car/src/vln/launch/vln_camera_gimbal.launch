@@ -1,0 +1,11 @@
+<launch>
+    <!-- Include the RealSense camera launch file -->
+    <include file="$(find vln)/launch/rs_camera.launch" />
+
+    <!-- Include the Orbbec camera launch file -->
+    <include file="$(find vln)/launch/orbbec_camera.launch" />
+
+    <!-- Include the gimbal launch file -->
+    <include file="$(find gimbal)/launch/gimbal_node.launch" />
+
+</launch>
