@@ -22,6 +22,9 @@ class Gimbal_interface(object):
         self.target_horiz_angle = None
         self.target_vert_angle = None
 
+        self.horiz_angle_range = [0, 350]
+        self.vert_angle_range = [-60, 20]
+
         self.pub_gimbal_horiz_control = rospy.Publisher(
             # name="/" + self.gimbal_name + "/gimbal/horiz_control",
             name = '/' + self.gimbal_name + gimbal_horiz_control_topic,
@@ -59,6 +62,21 @@ class Gimbal_interface(object):
 
     def control_gimbal_vert_angle(self, angle):
         self.pub_gimbal_vert_control.publish(angle)
+
+    def pan_tilt_move(self, pan_angle, tilt_angle):
+        rate = rospy.Rate(0.5)
+        if pan_angle is not None:
+            if pan_angle >= self.horiz_angle_range[0] and pan_angle <= self.horiz_angle_range[1]:
+                self.control_gimbal_horiz_angle(pan_angle)
+                rate.sleep()
+            else:
+                rospy.logwarn("Pan angle out of range: " + str(pan_angle))
+        if tilt_angle is not None:
+            if tilt_angle >= self.vert_angle_range[0] and tilt_angle <= self.vert_angle_range[1]:
+                self.control_gimbal_vert_angle(tilt_angle)
+                rate.sleep()
+            else:
+                rospy.logwarn("Tilt angle out of range: " + str(tilt_angle))
 
 # class Gimbla_Server(object):
 

@@ -8,6 +8,8 @@
 import os
 # from interbotix_xs_modules.locobot import InterbotixLocobotXS
 from ranger_mini_2_interface import Ranger_mini_2_interface
+from VCBot import VCBot
+
 import socket
 import copy
 import threading
@@ -241,11 +243,13 @@ def main():
     start_time = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
     # locobot = InterbotixLocobotXS(robot_model="locobot_wx250s", use_move_base_action=True)
 
-    robot_ranger = Ranger_mini_2_interface(
-        robot_name="ranger_mini_2",
+    robot = VCBot(
+        camera_model = "orbbec",
+        laser_model = "livoxs",
+        gimbal_model = "c40",
+        base_model = "ranger_mini_2",
+        robot_name="vcbot",
         use_move_base_action=False,
-        pub_base_command_name="/cmd_vel",
-        sub_base_odom_name="/odom",
     )
 
     rgbd = RGBD()
@@ -264,15 +268,15 @@ def main():
     # locobot.base.move_to_pose(0,0,0,wait=True)
     # locobot.base.mb_client.wait_for_result()
 
-    robot_ranger.move(0, 0, 0, wait=True)
-    robot_ranger.mb_client.wait_for_result()
+    robot.move(0, 0, 0, wait=True)
+    robot.mb_client.wait_for_result()
 
     while not rospy.is_shutdown():
         print('Waiting for action...')
 
         # ## robot location [x,y,direction]
         # location = locobot.base.get_odom()
-        location = robot_ranger.get_odom()
+        location = robot.base.get_odom()
 
         #### rgbd image
         rgb = rgbd.get_rgb()
@@ -291,57 +295,47 @@ def main():
 
         action_type = action[0].item()
 
-        # if action_type == 3.: # Point Navigation):
-        #     action_value = action[1].item()
-        #     if action_value == 12.:
-        #         print('got control signal')
-        #         gimbal_server.control_angle(30)
-        #         while gimbal_server.horizontal_angle > 29:
-        #             print('Gimbal arrived.')
-        #             gimbal_server.control_angle(0)
-        #             print('Gimbal go home.')
-
         if action_type == -1:  # Point Navigation
-            robot_ranger.move_to_pose(action[1].item(), action[2].item(), action[3].item(), wait=True)
-            robot_ranger.mb_client.wait_for_result()
+            robot.base.move_to_pose(action[1].item(), action[2].item(), action[3].item(), wait=True)
+            robot.base.mb_client.wait_for_result()
 
         else:  # Atomic Actions
             action_value = action[1].item()
             if action_type == 0:  # forward
-                robot_ranger.move(linear_speed, 0, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(linear_speed, 0, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 1:  # backward
-                robot_ranger.move(-linear_speed, 0, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(-linear_speed, 0, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 2:  # left
-                robot_ranger.move(0, angular_speed, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(0, angular_speed, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 3:  # right
-                robot_ranger.move(0, -angular_speed, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(0, -angular_speed, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 4:  # camera down 30-degree
-            #     robot_ranger.camera.pan_tilt_move(0, np.pi / 6)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 4:  # camera down 30-degree
+                robot.gimbal.pan_tilt_move(0, np.pi / 6)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 5:  # camera up 30-degree
-            #     robot_ranger.camera.pan_tilt_move(0, -np.pi / 6)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 5:  # camera up 30-degree
+                robot.gimbal.pan_tilt_move(0, -np.pi / 6)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 6:  # camera left 30-degree
-            #     robot_ranger.camera.pan_tilt_move(np.pi / 6, 0)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 6:  # camera left 30-degree
+                robot.gimbal.pan_tilt_move(np.pi / 6, 0)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 7:  # camera right 30-degree
-            #     robot_ranger.camera.pan_tilt_move(-np.pi / 6, 0)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 7:  # camera right 30-degree
+                robot.gimbal.pan_tilt_move(-np.pi / 6, 0)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 8:  # camera go home
-            #     robot_ranger.camera.pan_tilt_go_home()
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 8:  # camera go home
+                robot.gimbal.pan_tilt_go_home()
+                # robot.base.mb_client.wait_for_result()
             else:
                 print('Received an incorrect instruction!')
 
