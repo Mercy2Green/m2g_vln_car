@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <!-- Basic camera parameters -->
-    <arg name="camera_name" default="camera"/>
+    <arg name="camera_name" default="orbbec_camera"/>
     <!-- open device delay time 100m-->
     <arg name="connection_delay" default="100"/>
     <arg name="log_level" default="none"/>
