@@ -248,10 +248,7 @@ def main():
     while not rospy.is_shutdown():
         print('Waiting for action...')
 
-        ### robot location [x,y,direction]
-        location = robot.base.get_odom()
-
-        #### rgbd image
+        #### rgbd image 
         rgb = vln_client.get_rgb()
         depth = vln_client.get_depth()
         location = vln_client.get_odom()
