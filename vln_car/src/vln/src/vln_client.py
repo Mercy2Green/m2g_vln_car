@@ -8,6 +8,8 @@
 import os
 # from interbotix_xs_modules.locobot import InterbotixLocobotXS
 from ranger_mini_2_interface import Ranger_mini_2_interface
+from VCBot import VCBot
+
 import socket
 import copy
 import threading
@@ -102,65 +104,70 @@ class TCPServer:
 
     def close(self):
         self.server.close()
-        
-class RGBD(object):
-    """
-    This is a parent class on which the robot
-    specific Camera classes would be built.
-    """
+class VLN_client(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self):
-        """
-        Constructor for Camera parent class.
-        :param configs: configurations for camera
-        :type configs: YACS CfgNode
-        """
-        rospy.init_node('rgbd', anonymous=True)
+    def __init__(
+        self,
+        rgb_sub_topic,
+        depth_sub_topic,
+        odom_sub_topic,
+        image_width,
+        image_height,
+        depth_downscale,):
+
+        rospy.init_node('VLN_client', anonymous=True)
+
+        self.image_width = image_width
+        self.image_height = image_height
+        self.depth_downscale = depth_downscale
 
         self.cv_bridge = CvBridge()
-        self.camera_img_lock = threading.RLock()
+        self.sensor_lock = threading.RLock()
+
         self.rgb_img = None
         self.depth_img = None
+        self.odom = None
 
-        rgb_topic = '/camera/color/image_raw'
-        self.rgb_sub = message_filters.Subscriber(rgb_topic, Image)
-        depth_topic = '/camera/depth/image_raw'
-        self.depth_sub = message_filters.Subscriber(depth_topic, Image)
+        self.rgb_sub = message_filters.Subscriber(rgb_sub_topic, Image)
+        self.depth_sub = message_filters.Subscriber(depth_sub_topic, Image)
+        self.odom_sub = message_filters.Subscriber(odom_sub_topic, Odometry)
 
-
-        img_subs = [self.rgb_sub, self.depth_sub]
-        self.sync = message_filters.ApproximateTimeSynchronizer(
-            img_subs, queue_size=10, slop=0.2
+        sync_msg = [self.rgb_sub, self.depth_sub, self.odom_sub]
+        self.sensor_sync = message_filters.ApproximateTimeSynchronizer(
+            sync_msg, queue_size=10, slop=0.2
         )
-        self.sync.registerCallback(self._sync_callback)
-
-        while self.rgb_img is None and not rospy.is_shutdown(): 
+        self.sensor_sync.registerCallback(self._sync_callback)
+        while self.sensor_sync is None and not rospy.is_shutdown(): 
+            if sync_msg[0] is None:
+                print('Waiting for RGB image...')
+            elif sync_msg[1] is None:
+                print('Waiting for depth image...')
+            elif sync_msg[2] is None:
+                print('Waiting for odom...')
             time.sleep(1)
-            print('Waiting for RGBD image...')
-        print('RGBD image received.')
 
-    def _sync_callback(self, rgb, depth):
-        self.camera_img_lock.acquire()
-        try:
-            self.rgb_img = self.cv_bridge.imgmsg_to_cv2(rgb, "bgr8")
-            self.rgb_img = self.rgb_img[:, :, ::-1]
-            self.depth_img = self.cv_bridge.imgmsg_to_cv2(depth, "passthrough")
-
-        except CvBridgeError as e:
-            rospy.logerr(e)
-        self.camera_img_lock.release()
+    def _sync_callback(self, rgb, depth, odom):
+        with self.sensor_lock:
+            try:
+                self.rgb_img = self.cv_bridge.imgmsg_to_cv2(rgb, "bgr8")
+                self.rgb_img = self.rgb_img[:, :, ::-1]
+                self.depth_img = self.cv_bridge.imgmsg_to_cv2(depth, "passthrough")
+                self.odom = odom
+            except CvBridgeError as e:
+                rospy.logerr(e)
 
     def get_rgb(self):
         """
         This function returns the RGB image perceived by the camera.
         :rtype: np.ndarray or None
         """
-        self.camera_img_lock.acquire()
-        rgb = copy.deepcopy(self.rgb_img)
-        self.camera_img_lock.release()
-        return rgb
+        with self.sensor_lock:
+            rgb = copy.deepcopy(self.rgb_img)
+        if rgb is not None:
+            resized_image = cv2.resize(rgb, (self.image_width, self.image_height), interpolation=cv2.INTER_AREA)
+        return resized_image
 
     def get_depth(self):
         """
@@ -170,89 +177,60 @@ class RGBD(object):
         
         :rtype: np.ndarray or None
         """
-        self.camera_img_lock.acquire()
-        depth = copy.deepcopy(self.depth_img)
-        self.camera_img_lock.release()
+        with self.sensor_lock:
+            depth = copy.deepcopy(self.depth_img)
         if depth is not None:
             depth = depth / 1000.
             ### depth threshold 0.2m - 2m
             depth = depth.reshape(-1)
-            #valid = depth > 200
-            #valid = np.logical_and(valid, depth < 2000)
-            #depth = depth*valid
             depth = depth.reshape(height,width)
             depth_mapped = cv2.applyColorMap(cv2.convertScaleAbs(depth, alpha=0.3), cv2.COLORMAP_JET)
-
         return depth, depth_mapped
-
-class Odom(object):
-
-    def __init__(
-            self,
-            odometry_topic = '/vins_fusion/odometry') -> None:
-
-        self.odom = None
-
-        self.odometry_topic = odometry_topic
-        self.odometry_sub = rospy.Subscriber(self.odometry_topic, Odometry, self._odom_callback)
-
-        while self.odom is None and not rospy.is_shutdown(): 
-            time.sleep(1)
-            print('Waiting for odom...')
-        print('Odom received.')
-
-    def get_odom(self):
-        quat = (
-            self.odom.orientation.x,
-            self.odom.orientation.y,
-            self.odom.orientation.z,
-            self.odom.orientation.w
-        )
-        return [self.odom.position.x, self.odom.position.y, euler_from_quaternion(quat)[2]]
     
-    def _odom_callback(self, msg):
-        self.odom = msg.pose.pose
-
-class Gimbla_Server(object):
-
-    def __init__(
-            self,
-            control_topic = 'gimbla_target_angle',
-            horizontal_angle_topic = 'gimbla_horizontal_angle') -> None:
-        
-        self.control_topic = control_topic
-        self.horizontal_angle_topic = horizontal_angle_topic
-
-        self.horizontal_angle = 0
-        self.target_angle = None
-
-        self.control_pub = rospy.Publisher('/gimbla_target_angle', Float32, queue_size=2)
-        self.horizontal_angle_sub = rospy.Subscriber('/gimbla_target_angle', Float32, self.horizontal_angle_callback)
-
-    def horizontal_angle_callback(self, msg):
-        self.horizontal_angle = msg.data
-
-    def control_angle(self, angle):
-        self.control_pub.publish(angle)
-
+    def get_odom(self):
+        with self.sensor_lock:
+            return self.odom
 
 def main():
 
     start_time = time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime())
     # locobot = InterbotixLocobotXS(robot_model="locobot_wx250s", use_move_base_action=True)
 
-    robot_ranger = Ranger_mini_2_interface(
-        robot_name="ranger_mini_2",
-        use_move_base_action=False,
-        pub_base_command_name="/cmd_vel",
-        sub_base_odom_name="/odom",
+    robot = VCBot(
+            robot_name="vcbot",
+            gimbal_model="c40",
+            gimbal_h_control_topic="/gimbla_target_angle",
+            gimbal_v_control_topic=None,
+            gimbal_h_angle_topic="/gimbla_horizontal_angle",
+            gimbal_v_angle_topic="/gimbla_vertical_angle",
+            base_model="ranger_mini_2",
+            use_move_base_action=False,
+            odom_model="livox",
+            odom_offset=[-0.3, -0.1, 0, 3.14, 0, 0],
+            odom_sub_topic="/fastlio_odom",
+            odom_pub_topic="/odom",
+            RGB_model="orbbec",
+            RGB_WH=[1280, 720],
+            RGB_FOV=[90, 65],
+            RGB_sub_topic="/camera/color/image_raw",
+            Depth_model="orbbec",
+            Depth_WH=[1280, 720],
+            Depth_FOV=[90, 65],
+            Depth_sub_topic="/camera/depth/image_raw",
+            Depth_upscale=1.0,
+            Depth_downscale=1000,)
+
+    vln_client = VLN_client(
+        rgb_sub_topic=robot.RGB_sub_topic,
+        depth_sub_topic=robot.Depth_sub_topic,
+        odom_sub_topic=robot.odom_sub_topic,
+        image_width=robot.RGB_WH[0],
+        image_height=robot.RGB_WH[1],
+        depth_downscale=robot.Depth_downscale,
     )
 
-    rgbd = RGBD()
-    odom = Odom()
-
-    gimbal_server = Gimbla_Server(control_topic = 'gimbla_target_angle',
-            horizontal_angle_topic = 'gimbla_horizontal_angle')
+    # gimbal_server = Gimbla_client(control_topic = 'gimbla_target_angle',
+    #         horizontal_angle_topic = 'gimbla_horizontal_angle')
     
     rgb_client=TCPClient(Server_IP,5001)
     depth_client=TCPClient(Server_IP,5002)
@@ -264,23 +242,21 @@ def main():
     # locobot.base.move_to_pose(0,0,0,wait=True)
     # locobot.base.mb_client.wait_for_result()
 
-    robot_ranger.move(0, 0, 0, wait=True)
-    robot_ranger.mb_client.wait_for_result()
+    # robot.move(0, 0, 0, wait=True)
+    # robot.mb_client.wait_for_result()
 
     while not rospy.is_shutdown():
         print('Waiting for action...')
 
-        # ## robot location [x,y,direction]
-        # location = locobot.base.get_odom()
-        location = robot_ranger.get_odom()
+        ### robot location [x,y,direction]
+        location = robot.base.get_odom()
 
         #### rgbd image
-        rgb = rgbd.get_rgb()
-        depth, depth_mapped = rgbd.get_depth()
-        location = odom.get_odom()
+        rgb = vln_client.get_rgb()
+        depth = vln_client.get_depth()
+        location = vln_client.get_odom()
 
         print(location)
-
         rgb_client.send_data(rgb)
         depth_client.send_data(depth)
         location_client.send_data(location)
@@ -291,57 +267,47 @@ def main():
 
         action_type = action[0].item()
 
-        # if action_type == 3.: # Point Navigation):
-        #     action_value = action[1].item()
-        #     if action_value == 12.:
-        #         print('got control signal')
-        #         gimbal_server.control_angle(30)
-        #         while gimbal_server.horizontal_angle > 29:
-        #             print('Gimbal arrived.')
-        #             gimbal_server.control_angle(0)
-        #             print('Gimbal go home.')
-
         if action_type == -1:  # Point Navigation
-            robot_ranger.move_to_pose(action[1].item(), action[2].item(), action[3].item(), wait=True)
-            robot_ranger.mb_client.wait_for_result()
+            robot.base.move_to_pose(action[1].item(), action[2].item(), action[3].item(), wait=True)
+            robot.base.mb_client.wait_for_result()
 
         else:  # Atomic Actions
             action_value = action[1].item()
             if action_type == 0:  # forward
-                robot_ranger.move(linear_speed, 0, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(linear_speed, 0, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 1:  # backward
-                robot_ranger.move(-linear_speed, 0, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(-linear_speed, 0, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 2:  # left
-                robot_ranger.move(0, angular_speed, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(0, angular_speed, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
             elif action_type == 3:  # right
-                robot_ranger.move(0, -angular_speed, move_time * action_value)
-                # robot_ranger.mb_client.wait_for_result()
+                robot.base.move(0, -angular_speed, move_time * action_value)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 4:  # camera down 30-degree
-            #     robot_ranger.camera.pan_tilt_move(0, np.pi / 6)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 4:  # camera down 30-degree
+                robot.gimbal.pan_tilt_move(0, np.pi / 6)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 5:  # camera up 30-degree
-            #     robot_ranger.camera.pan_tilt_move(0, -np.pi / 6)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 5:  # camera up 30-degree
+                robot.gimbal.pan_tilt_move(0, -np.pi / 6)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 6:  # camera left 30-degree
-            #     robot_ranger.camera.pan_tilt_move(np.pi / 6, 0)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 6:  # camera left 30-degree
+                robot.gimbal.pan_tilt_move(np.pi / 6, 0)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 7:  # camera right 30-degree
-            #     robot_ranger.camera.pan_tilt_move(-np.pi / 6, 0)
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 7:  # camera right 30-degree
+                robot.gimbal.pan_tilt_move(-np.pi / 6, 0)
+                # robot.base.mb_client.wait_for_result()
 
-            # elif action_type == 8:  # camera go home
-            #     robot_ranger.camera.pan_tilt_go_home()
-            #     # robot_ranger.mb_client.wait_for_result()
+            elif action_type == 8:  # camera go home
+                robot.gimbal.pan_tilt_go_home()
+                # robot.base.mb_client.wait_for_result()
             else:
                 print('Received an incorrect instruction!')
 

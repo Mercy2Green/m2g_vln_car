@@ -3,6 +3,8 @@ vln_car/build/
 */install/
 */build/
 
+/Livox-SDK/build/
+
 # Prerequisites
 *.d
 

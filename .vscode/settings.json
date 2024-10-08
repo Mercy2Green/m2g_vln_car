@@ -2,5 +2,8 @@
     "python.analysis.extraPaths": [
         "./vln_car/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src"
     ],
-    "cmake.sourceDirectory": "/home/uav/m2g_vln_car/vln_car/src/OrbbecSDK_ROS1"
+    "cmake.sourceDirectory": "/home/uav/m2g_vln_car/vln_car/src/OrbbecSDK_ROS1",
+    "files.associations": {
+        "random": "cpp"
+    }
 }

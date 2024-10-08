@@ -1,6 +1,10 @@
 # m2g_vln_car
  For the car
 
+# vln_car project overview
+
+![vln_car Diagram](vln_car_project_overview.png)
+
 
 If you are installing on multiple robots, you may find it convenient to build the source code using the backend method. This requires an internet connection but is not dependent on Linux versions or kernel versions and does not require patching. Once you have extracted a source-code zip file, you can build the SDK from source with the simple method below:
 

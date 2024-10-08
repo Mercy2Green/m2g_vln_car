@@ -19,8 +19,6 @@ import actionlib
 MAX_LINEAR_SPEED = 0.5
 MAX_ANGULAR_SPEED = 0.5
 
-
-
 class Ranger_mini_2_interface(object):
 
     def __init__(
@@ -32,7 +30,7 @@ class Ranger_mini_2_interface(object):
 
         self.robot_name = robot_name
         self.odom = Pose()
-        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        self.odom_sub = rospy.Subscriber("/odom", Odometry, self.base_odom_cb)
         self.use_move_base_action = use_move_base_action
         if (self.use_move_base_action):
             self.mb_client = actionlib.SimpleActionClient(
@@ -115,18 +113,18 @@ class Ranger_mini_2_interface(object):
 
     ### Get the 2D pose of the robot w.r.t. the robot 'odom' frame
     ### @return pose - list containing the [x, y, yaw] of the robot w.r.t. the odom frame
-    def get_odom(self):
+    def get_odom(self, odom:Pose):
         quat = (
-            self.odom.orientation.x,
-            self.odom.orientation.y,
-            self.odom.orientation.z,
-            self.odom.orientation.w
+            odom.orientation.x,
+            odom.orientation.y,
+            odom.orientation.z,
+            odom.orientation.w
         )
-        return [self.odom.position.x, self.odom.position.y, euler_from_quaternion(quat)[2]]
+        return [odom.position.x, odom.position.y, euler_from_quaternion(quat)[2]]
 
     ### @brief ROS Callback function to update the odometry of the robot
     ### @param msg - ROS Odometry message from the base
-    def base_odom_cb(self, msg):
+    def base_odom_cb(self, msg:Odometry):
         self.odom = msg.pose.pose
 
 
