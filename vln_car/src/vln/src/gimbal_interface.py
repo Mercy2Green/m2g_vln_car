@@ -13,7 +13,9 @@ class Gimbal_interface(object):
         self,
         gimbal_name,
         gimbal_horiz_control_topic = '/gimbal/horiz_control',
-        gimbal_vert_control_topic = '/gimbal/vert_control'
+        gimbal_vert_control_topic = '/gimbal/vert_control',
+        gimbal_horiz_angle_topic = '/gimbal/horiz_angle',
+        gimbal_vert_angle_topic = '/gimbal/vert_angle',
         ):
 
         self.gimbal_name = gimbal_name
@@ -40,13 +42,15 @@ class Gimbal_interface(object):
         )
 
         self.sub_gimbal_horiz_angle = rospy.Subscriber(
-            name = '/' + self.gimbal_name + '/gimbal/horiz_angle',
+            # name = '/' + self.gimbal_name + '/gimbal/horiz_angle',
+            name = '/' + self.gimbal_name + gimbal_horiz_angle_topic,
             data_class=Float32,
             callback=self.gimbal_horiz_angle_cb,
         )
 
         self.sub_gimbal_vert_angle = rospy.Subscriber(
-            name = '/' + self.gimbal_name + '/gimbal/vert_angle',
+            # name = '/' + self.gimbal_name + '/gimbal/vert_angle',
+            name = '/' + self.gimbal_name + gimbal_vert_angle_topic,
             data_class=Float32,
             callback=self.gimbal_vert_angle_cb,
         )
@@ -79,6 +83,28 @@ class Gimbal_interface(object):
                 rospy.logwarn("Tilt angle out of range: " + str(tilt_angle))
 
 # class Gimbla_Server(object):
+
+#     def __init__(
+#             self,
+#             control_topic = 'gimbla_target_angle',
+#             horizontal_angle_topic = 'gimbla_horizontal_angle') -> None:
+        
+#         self.control_topic = control_topic
+#         self.horizontal_angle_topic = horizontal_angle_topic
+
+#         self.horizontal_angle = 0
+#         self.target_angle = None
+
+#         self.control_pub = rospy.Publisher('/gimbla_target_angle', Float32, queue_size=2)
+#         self.horizontal_angle_sub = rospy.Subscriber('/gimbla_target_angle', Float32, self.horizontal_angle_callback)
+
+#     def horizontal_angle_callback(self, msg):
+#         self.horizontal_angle = msg.data
+
+#     def control_angle(self, angle):
+#         self.control_pub.publish(angle)
+
+# class Gimbla_client(object):
 
 #     def __init__(
 #             self,

@@ -1,0 +1,20 @@
+<launch>
+
+    <!-- Include the RealSense camera launch file -->
+    <include file="$(find livox_ros_driver2)/launch/msg_MID360.launch" />
+
+    <!-- Include the Orbbec camera launch file -->
+    <include file="$(find fast_lio)/launch/mapping_mid360.launch" />
+
+    <!-- The laser sensor and the robot base have a position bias -->
+    <!-- However ,these method are too slow-->
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="robot_odom" 
+        args="-0.3 -0.10 0 3.14 0 0 odom robot_odom 100" /> -->
+
+    <!-- Or using the lio_odom_2_robot node -->
+    <!-- <node pkg='vln' type='lio_odom_2_robot' name='lio_odom_2_robot'
+        args="-0.3 -0.1 0.0 3.14 0.0 0.0"/> -->
+
+
+</launch>
