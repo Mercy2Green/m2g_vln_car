@@ -5,6 +5,8 @@ vln_car/build/
 
 /Livox-SDK/build/
 
+vln_car/src/vln/src/__pycache__/
+
 # Prerequisites
 *.d
 

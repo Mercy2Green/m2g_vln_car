@@ -49,8 +49,8 @@ class GimblaNode:
         self.target_angle_pub = rospy.Publisher('gimbla_target_angle', Float32, queue_size=1)
 
         # self.get_target_and_turn_sub = rospy.Subscriber('gimbla_target_angle', Float32, self.get_target_and_turn)
-        self.control_horiz_angle_sub = rospy.Subscriber('gimbla_control_horizontal_angle', Float32, self.get_target_and_turn, callback_args='horizontal')
-        self.control_vert_angle_sub = rospy.Subscriber('gimbla_control_vertical_angle', Float32, self.get_target_and_turn, callback_args='vertical')
+        self.control_horiz_angle_sub = rospy.Subscriber('gimbla_horizontal_angle', Float32, self.get_target_and_turn, callback_args='horizontal')
+        self.control_vert_angle_sub = rospy.Subscriber('gimbla_vertical_angle', Float32, self.get_target_and_turn, callback_args='vertical')
         # the angle is a list of two elements, the first is the horizontal angle, the second is the vertical angle
         
         # Start threads
@@ -74,13 +74,19 @@ class GimblaNode:
         horizontal_angle_check_thread.start()
 
         while not rospy.is_shutdown():
-            rate = rospy.Rate(2)
-            # target_angle = self.test_control_angle(axis='horizontal')
-            target_angle = self.target_angle
+            target_angle = self.test_control_angle(axis='horizontal')
             self.target_angle_pub.publish(target_angle)
-            #sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle
-            sleep(0.1)
-
+            sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle
+            if target_angle is not None:
+                while not self.get_angle_and_check(target_angle, 0.05, True):
+                    # self.target_angle_pub.publish(target_angle)
+                    control_data_frame = frame_control_angle(angle=target_angle, axis='horizontal')
+                    self.ser.write(control_data_frame)
+                    check_angle_frame = frame_check_angle(axis='horizontal', address=self.address)
+                    self.ser.write(check_angle_frame)
+                    sleep(0.5)
+            else:
+                continue
     def get_target_and_turn(self, msg, axis = 'horizontal'):
         rate = rospy.Rate(2)
         if msg.data is not None:

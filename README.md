@@ -18,6 +18,49 @@ Also this project is not only my project, but also the project of the team of th
 4. Livox Mid-360
 5. C40 Gimbal (Campany BaoShiLai in taobao)
 
+
+# Step by step to run this project
+
+## Open CAN port
+
+```
+bash /home/uav/m2g_vln_car/vln_car/src/vln/scripts/usb2can.bash 
+
+ifconfig can0
+```
+
+If the can 0 is up, then is fine.
+
+## Open the ROS topic of all the sensors
+
+Using different terminals to open the following commands.
+
+```
+roslaunch vln orbbec_camera.launch
+
+roslaunch vln fast_lio.launch
+
+roslaunch ranger_base ranger_mini_v2.launch
+```
+
+## Open the VLN client
+
+```
+rosrun vln vln_client.py
+```
+
+## Open the VLN server
+
+Open your labs server, and go to the VLN server code folder, and run the following command.
+
+```
+cd /home/lg1/peteryu_workspace/Sim2Real-VLN-3DFF/Server_Code
+
+bash ./vln.bash
+```
+
+
+
 # Some notes :)
 
 ## For the D435i (Deplicated)

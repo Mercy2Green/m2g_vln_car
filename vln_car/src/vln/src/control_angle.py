@@ -48,9 +48,8 @@ class GimblaNode:
         self.vertical_angle_pub = rospy.Publisher('gimbla_vertical_angle', Float32, queue_size=10)
         self.target_angle_pub = rospy.Publisher('gimbla_target_angle', Float32, queue_size=1)
 
-        # self.get_target_and_turn_sub = rospy.Subscriber('gimbla_target_angle', Float32, self.get_target_and_turn)
-        self.control_horiz_angle_sub = rospy.Subscriber('gimbla_control_horizontal_angle', Float32, self.get_target_and_turn, callback_args='horizontal')
-        self.control_vert_angle_sub = rospy.Subscriber('gimbla_control_vertical_angle', Float32, self.get_target_and_turn, callback_args='vertical')
+        self.turn_sub = rospy.Subscriber('control_angle', Float32MultiArray, self.receive_angle_and_turn)
+        self.target_angle_sub = rospy.Subscriber('gimbla_target_angle', Float32, self.current_target_angle)
         # the angle is a list of two elements, the first is the horizontal angle, the second is the vertical angle
         
         # Start threads
@@ -64,33 +63,47 @@ class GimblaNode:
         read_port_thread.daemon = True
         read_port_thread.start()
 
-        publish_rate = 2 # The double because the check command is sent 2hz, so we need to wait for that.
-        angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate*2, self.horizontal_angle_pub, self.vertical_angle_pub))
+        angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(self.horizontal_angle_pub, self.vertical_angle_pub))
         angle_pub_thread.daemon = True
         angle_pub_thread.start()
 
-        horizontal_angle_check_thread = threading.Thread(target=self.send_check_commands, args=(2, True, True, self.address))
-        horizontal_angle_check_thread.daemon = True
-        horizontal_angle_check_thread.start()
-
         while not rospy.is_shutdown():
+
+            #target_angle = self.test_control_angle(axis='horizontal')
+            target_angle = self.test_control_angle(axis='horizontal')
+            self.target_angle_pub.publish(target_angle)
+            sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle
+            if target_angle is not None:
+                while not self.get_angle_and_check(target_angle, 0.05, True):
+                    # self.target_angle_pub.publish(target_angle)
+                    control_data_frame = frame_control_angle(angle=target_angle, axis='horizontal')
+                    self.ser.write(control_data_frame)
+                    check_angle_frame = frame_check_angle(axis='horizontal', address=self.address)
+                    self.ser.write(check_angle_frame)
+                    sleep(0.5)
+            else:
+                continue
+            '''
             rate = rospy.Rate(2)
             # target_angle = self.test_control_angle(axis='horizontal')
             target_angle = self.target_angle
             self.target_angle_pub.publish(target_angle)
-            #sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle
-            sleep(0.1)
+            sleep(0.5)
+            '''
+                
 
-    def get_target_and_turn(self, msg, axis = 'horizontal'):
-        rate = rospy.Rate(2)
+    def current_target_angle(self, msg):
         if msg.data is not None:
             self.target_angle = msg.data
-            target_angle = self.target_angle
-            if target_angle is not None:
-                control_data_frame = frame_control_angle(angle=target_angle, axis=axis)
-                self.ser.write(control_data_frame)
-                rate.sleep()
 
+    def receive_angle_and_turn(self, msg): 
+        # The first angle is horizontal angle, the second angle is vertical angle
+        h_angle, v_angle = msg.data
+        h_data_frame = frame_control_angle(h_angle, axis='horizontal', address=self.address)
+        self.ser.write(h_data_frame)
+        v_data_frame = frame_control_vertical_angle(v_angle, axis='vertical', address=self.address)
+        self.ser.write(v_data_frame)
+    
     def test_control_angle(self, axis='horizontal'):
         """
         This function waits for user input angle from the keyboard and sends the control command to the gimbal.
@@ -131,27 +144,24 @@ class GimblaNode:
             else:
                 return False
                 
-    def get_angle_and_publish(self, rate_hz, h_pub, v_pub, horizontal_flag = True, vertical_flag = True):
+    def get_angle_and_publish(self, h_pub, v_pub, horizontal_flag = True, vertical_flag = True):
         while not rospy.is_shutdown():
-            rate = rospy.Rate(rate_hz)
             if self.frame:
-                with self.frame_lock:
-                    frame = self.frame
-                    if frame[3] == 0x59 and horizontal_flag:
-                        angle = get_angle_from_frame(frame)
-                        if angle is not None:
-                            h_pub.publish(angle)
-                            # print('horizontal angle: ', angle)
-                        else:
-                            rospy.logwarn("Failed to get horizontal angle from frame")
-                    if frame[3] == 0x5B and vertical_flag:
-                        angle = get_angle_from_frame(frame)
-                        if angle is not None:
-                            v_pub.publish(angle)
-                            # print('vertical angle: ', angle)
-                        else:
-                            rospy.logwarn("Failed to get vertical angle from frame")
-                rate.sleep()
+                frame = self.frame
+                if frame[3] == 0x59 and horizontal_flag:
+                    angle = get_angle_from_frame(frame)
+                    if angle is not None:
+                        h_pub.publish(angle)
+                        # print('horizontal angle: ', angle)
+                    else:
+                        rospy.logwarn("Failed to get horizontal angle from frame")
+                if frame[3] == 0x5B and vertical_flag:
+                    angle = get_angle_from_frame(frame)
+                    if angle is not None:
+                        v_pub.publish(angle)
+                        # print('vertical angle: ', angle)
+                    else:
+                        rospy.logwarn("Failed to get vertical angle from frame")
     
     def read_from_port(self, ser):
         while not rospy.is_shutdown():
@@ -167,21 +177,25 @@ class GimblaNode:
                     else:
                         self.buffer.pop(0)  # Remove the first byte if it's not the start of a frame
 
-    def send_check_commands(self, rate_hz=2, horizontal_flag = True, vertical_flag = True, device=1):
+    def send_check_commands(self, rate=2, horizontal_flag = True, vertical_flag = True, device=1):
         while not rospy.is_shutdown():
-            rate = rospy.Rate(rate_hz) # times per second
             if horizontal_flag:
-                data_frame = frame_check_angle(axis='horizontal', address=device)
+                data_frame = frame_check_angle(angle='horizontal', address=device)
                 self.ser.write(data_frame)
                 # print('horizontal check command: ', data_frame.hex().upper())
-                rate.sleep()
+                sleep(rate)
             if vertical_flag:
-                data_frame = frame_check_angle(axis='vertical', address=device)
+                data_frame = frame_check_angle(angle='vertical', address=device)
                 self.ser.write(data_frame)
-                rate.sleep()
+                sleep(rate)
                 # print('vertical check command: ', data_frame.hex().upper())
             # rospy.loginfo("Sent check command: %s", data_frame.hex().upper())
 
+    def handle_user_input(self):
+        while not rospy.is_shutdown():
+            user_input = input("Enter a command: ")
+            rospy.loginfo(f"User input received: {user_input}")
+            # Process user input here
 
     def run(self):
         rospy.spin()
