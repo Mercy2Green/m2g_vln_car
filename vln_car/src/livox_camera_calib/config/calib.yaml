@@ -1,8 +1,8 @@
 # Data path. adjust them!
 common:
-    image_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/1.png"
-    pcd_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/1.pcd"
-    result_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/extrinsic.txt"
+    image_file: "/home/uav/m2g_vln_car/vln_car/src/vln/calibrate_data/0.png"
+    pcd_file: "/home/uav/m2g_vln_car/vln_car/src/vln/calibrate_data/0.pcd"
+    result_file: "/home/uav/m2g_vln_car/vln_car/src/vln/calibrate_data/extrinsic.txt"
 
 # Camera Parameters. Adjust them!
 camera:

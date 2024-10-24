@@ -4,7 +4,7 @@ rosbag record /livox/lidar -O /home/uav/m2g_vln_car/vln_car/src/vln/data/4
 
 roslaunch livox_camera_calib bag_to_pcd.launch 
 
-roslaunch livox_camera_calib calibrate.launch
+roslaunch livox_camera_calib calib.launch
 
 roslaunch livox_camera_calib multi_calib.launch
 
