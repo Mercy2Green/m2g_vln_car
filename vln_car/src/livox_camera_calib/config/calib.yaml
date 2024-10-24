@@ -1,0 +1,22 @@
+# Data path. adjust them!
+common:
+    image_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/1.png"
+    pcd_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/1.pcd"
+    result_file: "/home/uav/m2g_vln_car/vln_car/src/vln/data/extrinsic.txt"
+
+# Camera Parameters. Adjust them!
+camera:
+    # camera_matrix: [1364.45, 0.0,      958.327,
+    #             0.0,     1366.46,  535.074,
+    #             0.0,     0.0,      1.0     ]
+    camera_matrix: [610.6340942382812, 0.0, 635.8567504882812, 
+                    0.0, 610.8860473632812, 355.1409912109375, 
+                    0.0, 0.0, 1.0]
+
+    # dist_coeffs: [-0.03164944052696228, 0.03454863280057907, 3.312328044557944e-05, -0.0008416193886660039, -0.011783664114773273]
+    dist_coeffs: [0,0,0,0,0]
+
+# Calibration Parameters.!
+calib:
+    calib_config_file: "/home/uav/m2g_vln_car/vln_car/src/livox_camera_calib/config/config_outdoor.yaml"
+    use_rough_calib: false # set true if your initial_extrinsic is bad
