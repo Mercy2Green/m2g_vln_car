@@ -1,0 +1,12 @@
+<launch>
+
+    <include file="$(find livox_ros_driver2)/launch/msg_MID360.launch" />
+
+    <include file="$(find fast_lio)/launch/mapping_mid360.launch" />
+
+    <include file='$(find vln)/launch/orbbec_camera.launch' /> 
+
+    <!-- run the sync_get_data -->
+    <node pkg="reconstruction" type="sync_get_data.py" name="sync_get_data" output="screen" />
+
+</launch>

@@ -1,9 +1,7 @@
 <launch>
 
-    <!-- Include the RealSense camera launch file -->
     <include file="$(find livox_ros_driver2)/launch/msg_MID360.launch" />
 
-    <!-- Include the Orbbec camera launch file -->
     <include file="$(find fast_lio)/launch/mapping_mid360.launch" />
 
     <!-- The laser sensor and the robot base have a position bias -->
