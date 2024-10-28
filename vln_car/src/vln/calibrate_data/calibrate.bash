@@ -8,7 +8,9 @@ roslaunch livox_camera_calib calib.launch
 
 roslaunch livox_camera_calib multi_calib.launch
 
-rosrun camera_calibration cameracalibrator.py --size 8x11 --square 0.015 image:=/orbbec_camera/color/image_raw
+
+rosrun camera_calibration cameracalibrator.py --size 7x10 --square 0.015 image:=/orbbec_camera/color/image_raw
+# rosrun camera_calibration cameracalibrator.py --size 6x8 --square 0.020 image:=/camera/color/image_raw
 
 cd /home/uav/m2g_vln_car/SensorsCalibration/lidar2camera/manual_calib/
 

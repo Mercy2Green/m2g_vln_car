@@ -77,11 +77,11 @@ class SyncGetData:
                     self.depth_img = self.cv_bridge.imgmsg_to_cv2(depth, "passthrough")
                     self.odom = _odom
                     self.lpose = self.odom_2_pose(_odom)
-                    self.cpose = self.lpose_2_cpose(self.lpose, L2C_TRANSFORM)
+                    # self.cpose = self.lpose_2_cpose(self.lpose, L2C_TRANSFORM)
                 except CvBridgeError as e:
                     rospy.logerr(e)
 
-    def odom_2_pose(self, odom, lidar_position=[0,0,0.8]):
+    def odom_2_pose(self, odom):
         x,y,z = odom.position.x, odom.position.y, odom.position.z
         quat = (
             odom.orientation.x,
@@ -96,7 +96,7 @@ class SyncGetData:
 
         pose= np.eye(4)
         pose[:3,:3] = rotation_matrix
-        pose[:3,3] = position + lidar_position
+        pose[:3,3] = position
 
         return pose
         
@@ -110,8 +110,8 @@ class SyncGetData:
             depth = copy.deepcopy(self.depth_img)
             odom = copy.deepcopy(self.odom)
             lpose = copy.deepcopy(self.lpose)
-            cpose = copy.deepcopy(self.cpose)
-        return rgb, depth, odom, lpose, cpose
+            # cpose = copy.deepcopy(self.cpose)
+        return rgb, depth, odom, lpose
     
     def save_data(self, save_root_path, idx_max=5):
 
@@ -133,7 +133,7 @@ class SyncGetData:
 
         while not rospy.is_shutdown():
                 
-            rgb, depth, odom, lpose, cpose = self.get_data()
+            rgb, depth, odom, lpose = self.get_data()
 
             images_list.append(rgb)
             images_name_list.append(f"i_{idx}.png")
@@ -141,9 +141,9 @@ class SyncGetData:
             depths_name_list.append(f"d_{idx}.png")
             odoms_list.append(odom)
             lposes_list.append(lpose)
-            cposes_list.append(cpose)
 
             idx += 1
+            print(f"Get {idx}/{idx_max}th data")
             
             rate.sleep()
 
@@ -167,7 +167,6 @@ class SyncGetData:
                 'bgr_name': images_name_list[i],
                 'depths_name': depths_name_list[i],
                 'lpose': lposes_list[i],
-                'cpose': cposes_list[i],
                 # 'odoms': odoms_list[i],
                 'camera_intrinsics': camera_intrinsics.tolist(),  # convert numpy array to list
                 }
@@ -179,7 +178,8 @@ class SyncGetData:
 
     def start(self):
 
-        self.save_data("/home/uav/m2g_vln_car/datasets/2024-10-25-1-00-00", idx_max=100)
+        exp_name = "2024-10-25-1-00-00"
+        self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=100)
 
         while not rospy.is_shutdown():
             print("#######################*******Finish saving data********#######################")

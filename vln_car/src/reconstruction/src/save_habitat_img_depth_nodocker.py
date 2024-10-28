@@ -137,6 +137,20 @@ def get_img(proc_id, out_queue, scanvp_list, args):
             rotvec_h = R.from_rotvec(mp3d_h)
             rotvec_e = R.from_rotvec(mp3d_e)
             habitat_rotation = (rotvec_h * rotvec_e).as_quat()
+
+            rotation = R.from_quat(habitat_rotation)
+            rotation_matrix = rotation.as_matrix()
+            
+            T = np.eye(4)
+            T[:3, :3] = rotation_matrix
+            T[:3, 3] = np.array(habitat_position)
+            T[3, 3] = 1
+            
+            T = T.reshape(-1)
+            T = T.tolist()
+            transformation_matrix_list.append(T)
+
+
             habitat_sim.sim.set_agent_state(habitat_position, habitat_rotation)
             
             # This is for Test transformation # This is the finaly transformation.
