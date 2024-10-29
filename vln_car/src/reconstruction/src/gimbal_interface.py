@@ -19,7 +19,7 @@ class Gimbal_interface(object):
         ):
 
         self.gimbal_name = gimbal_name
-        self.h_angle = None
+        self.h_angle = -1
         self.v_angle = None
         self.target_h_angle = None
         self.target_v_angle = None
