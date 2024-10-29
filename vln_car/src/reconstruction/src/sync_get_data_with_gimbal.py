@@ -214,38 +214,17 @@ class SyncGetData:
 
     def start(self):
 
-        date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
-        exp_name = f"{date}_exp"
-
         while not rospy.is_shutdown():
 
             start_flag = input("Do you want to start the data collection? (y/n): ")
             if start_flag == 'y':
-                # try:
+                exp_name = input("Enter the experiment name: ")
                 print("Start the data collection")
-                save_thread = threading.Thread(target=self.save_data_gimbal, args=(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST))
-                save_thread.daemon = True
-                save_thread.start()
-                save_thread.join()
-                # self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST)
-                # except:
-                #     print("Error in saving data")
-                
+                self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST)       
             else:
                 print('Enter "y" to start the data collection')
 
             time.sleep(0.5)
-
-        # # date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
-        # # exp_name = f"{date}_exp"
-        # # self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=100)
-
-        # while not rospy.is_shutdown():
-            
-        #     time.sleep(0.2)
-
-        # rospy.spin()
-
 
 
 if __name__ == "__main__":
