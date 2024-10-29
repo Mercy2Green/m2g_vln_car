@@ -1,0 +1,7 @@
+<launch>
+
+    <node pkg="gimbal" type="gimbal_node.py" name="gimbal_node" output="screen"/>
+    <!-- run the sync_get_data -->
+    <node pkg="reconstruction" type="sync_get_data_with_gimbal.py" name="sync_get_data_with_gimbal" output="screen" />
+
+</launch>

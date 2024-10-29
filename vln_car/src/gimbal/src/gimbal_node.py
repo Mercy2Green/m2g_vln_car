@@ -44,13 +44,13 @@ class GimblaNode:
         self.target_angle = None
         
         # Publisher
-        self.horizontal_angle_pub = rospy.Publisher('gimbla_horizontal_angle', Float32, queue_size=10)
+        self.horizontal_angle_pub = rospy.Publisher('/gimbal/h_angle', Float32, queue_size=10)
         self.vertical_angle_pub = rospy.Publisher('gimbla_vertical_angle', Float32, queue_size=10)
         self.target_angle_pub = rospy.Publisher('gimbla_target_angle', Float32, queue_size=1)
 
         # self.get_target_and_turn_sub = rospy.Subscriber('gimbla_target_angle', Float32, self.get_target_and_turn)
-        self.control_horiz_angle_sub = rospy.Subscriber('gimbla_control_horizontal_angle', Float32, self.get_target_and_turn, callback_args='horizontal')
-        self.control_vert_angle_sub = rospy.Subscriber('gimbla_control_vertical_angle', Float32, self.get_target_and_turn, callback_args='vertical')
+        self.control_horiz_angle_sub = rospy.Subscriber('/gimbal/h_control', Float32, self.get_target_and_turn, callback_args='horizontal')
+        # self.control_vert_angle_sub = rospy.Subscriber('gimbla_control_vertical_angle', Float32, self.get_target_and_turn, callback_args='vertical')
         # the angle is a list of two elements, the first is the horizontal angle, the second is the vertical angle
         
         # Start threads
@@ -65,7 +65,7 @@ class GimblaNode:
         read_port_thread.start()
 
         publish_rate = 2 # The double because the check command is sent 2hz, so we need to wait for that.
-        angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate*2, self.horizontal_angle_pub, self.vertical_angle_pub))
+        angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate*2, self.horizontal_angle_pub, self.vertical_angle_pub, True, False))
         angle_pub_thread.daemon = True
         angle_pub_thread.start()
 

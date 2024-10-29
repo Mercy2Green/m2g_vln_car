@@ -18,29 +18,7 @@ from nav_msgs.msg import Odometry
 
 import message_filters
 
-
-L2C_TRANSFORM = np.array(
-    [   [-0.00859563,-0.999714,-0.0223111,0.01927],
-        [-0.0428589,0.0227041,-1.00387,0.699481],
-        [0.999075,-0.00764551,-0.0423244,0.0611374],
-        [0,0,0,1]])
-
-[-0.00859563,-0.999714,-0.0223111,0.01927],
-[-0.0428589,0.0227041,-1.00387,0.699481],
-[0.999075,-0.00764551,-0.0423244,0.0611374],
-[0,0,0,1]
-
-
-# [0.0015196,-0.99975,-0.0223111,-0.00834341],
-# [-0.0430864,0.0222693,-1.00387,0.730004],
-# [0.999101,0.0024632,-0.0423244,0.0424253],
-# [0,0,0,1]
-
-
-DEPTH_SUB_TOPIC = '/orbbec_camera/depth/image_raw'
-RGB_SUB_TOPIC = '/orbbec_camera/color/image_raw'
-ODOM_SUB_TOPIC = '/fastlio_odom'
-
+from param import L2C_TRANSFORM, RGB_SUB_TOPIC, DEPTH_SUB_TOPIC, ODOM_SUB_TOPIC, CAMERA_INTRINSIC
 
 class SyncGetData:
 
@@ -53,19 +31,14 @@ class SyncGetData:
         self.rgb_img = None
         self.depth_img = None
         self.lpose = None
-        self.cpose = None
-
-        # rospy.Subscriber('/orbbec_camera/color/image_raw', Image, self.rgb_callback)
-        # rospy.Subscriber('/orbbec_camera/depth/image_raw', Image, self.depth_callback)
 
         self.rgb_sub = message_filters.Subscriber(RGB_SUB_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(DEPTH_SUB_TOPIC, Image)
         self.odom_sub = message_filters.Subscriber(ODOM_SUB_TOPIC, Odometry)
 
         sync_msg = [self.rgb_sub, self.depth_sub, self.odom_sub]
-
         self.sensor_sync = message_filters.ApproximateTimeSynchronizer(
-            sync_msg, queue_size=100, slop=0.1
+            sync_msg, queue_size=100, slop=0.05
         )
         # self.sensor_sync = message_filters.TimeSynchronizer(sync_msg, queue_size = 100)
 
@@ -77,6 +50,16 @@ class SyncGetData:
                 break
             print("Waiting for sensor data...")
             time.sleep(1)
+
+    def check_gimbal(self, angle, target_angle):
+
+        if target_angle is not None:
+            if abs(angle - target_angle) < 0.02:
+                return True
+            else:
+                return False
+        else:
+            return
 
     def _sync_callback(self, rgb, depth, odom):
 
@@ -112,7 +95,7 @@ class SyncGetData:
         return pose
         
     def lpose_2_cpose(self, lpose, L2C_TRANSFORM):
-        cpose = np.dot(L2C_TRANSFORM,lpose)
+        cpose = np.dot(L2C_TRANSFORM, lpose)
         return cpose
 
     def get_data(self):
@@ -135,11 +118,7 @@ class SyncGetData:
         depths_name_list = []
         odoms_list = []
         lposes_list = []
-        cposes_list = []
-        camera_intrinsics = np.array([  [610.6340942382812, 0.0, 635.8567504882812], 
-                                        [0.0, 610.8860473632812, 355.1409912109375], 
-                                        [0.0, 0.0, 1.0]])
-        
+        camera_intrinsics = CAMERA_INTRINSIC
         
         config = ConfigParser()
 
@@ -154,9 +133,10 @@ class SyncGetData:
             odoms_list.append(odom)
             lposes_list.append(lpose)
 
-            idx += 1
-            print(f"#########*******Get {idx}/{idx_max}th data*******##############")
             
+            print(f"#########*******Get {idx+1}/{idx_max}th data*******##############")
+            idx += 1
+
             rate.sleep()
 
             if idx == idx_max:
@@ -183,23 +163,46 @@ class SyncGetData:
                 'camera_intrinsics': camera_intrinsics.tolist(),  # convert numpy array to list
                 'l2c_transform': L2C_TRANSFORM.tolist()
                 }
+
+            print(f"Saved {i+1}/{idx_max}th data")
             
         with open(f"{save_root_path}/camera_parameter/camera_parameter.conf", 'a') as f:
             config.write(f)
 
-            print(f"Save {i}/{idx_max}th data")
+            
 
     def start(self):
 
-        date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
-        exp_name = f"{date}_exp"
-        self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=100)
-
         while not rospy.is_shutdown():
-            print("#######################*******Finish saving data********#######################")
-            time.sleep(0.2)
+
+            start_flag = input("Do you want to start the data collection? (y/n): ")
+            if start_flag == 'y':
+                seconds = input("Enter the time duration for data collection (s): ")
+                # self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=10)
+                try:
+                    seconds = int(seconds)
+                    print("Start the data collection")
+                    date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
+                    exp_name = f"{date}_exp"
+                    self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=seconds)
+                except:
+                    print("Error in saving data")
+                print("#######################*******Finish saving data********#######################")
+            else:
+                print('Enter "y" to start the data collection')
+
+            time.sleep(0.5)
+
+        # # date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
+        # # exp_name = f"{date}_exp"
+        # # self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=100)
+
+        # while not rospy.is_shutdown():
+            
+        #     time.sleep(0.2)
 
         # rospy.spin()
+
 
 
 if __name__ == "__main__":
