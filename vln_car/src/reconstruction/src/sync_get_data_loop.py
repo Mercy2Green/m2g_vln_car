@@ -184,7 +184,7 @@ class SyncGetData:
                     print("Start the data collection")
                     date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
                     exp_name = f"{date}_exp"
-                    self.save_data(f"/home/uav/m2g_vln_car/datasets/{exp_name}", idx_max=seconds)
+                    self.save_data(f"/home/uav/m2g_vln_car/datasets/loop/{exp_name}", idx_max=seconds)
                 except:
                     print("Error in saving data")
                 print("#######################*******Finish saving data********#######################")

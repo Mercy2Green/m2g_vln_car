@@ -1,0 +1,6 @@
+<launch>
+
+    <!-- run the sync_get_data -->
+    <node pkg="reconstruction" type="sync_get_data_loop.py" name="sync_get_data_loop" output="screen" />
+
+</launch>

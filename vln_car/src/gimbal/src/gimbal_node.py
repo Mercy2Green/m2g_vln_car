@@ -64,7 +64,7 @@ class GimblaNode:
         read_port_thread.daemon = True
         read_port_thread.start()
 
-        publish_rate = 2 # The double because the check command is sent 2hz, so we need to wait for that.
+        publish_rate = 1 # The double because the check command is sent 2hz, so we need to wait for that.
         angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate*2, self.horizontal_angle_pub, self.vertical_angle_pub, True, False))
         angle_pub_thread.daemon = True
         angle_pub_thread.start()
@@ -167,7 +167,7 @@ class GimblaNode:
                     else:
                         self.buffer.pop(0)  # Remove the first byte if it's not the start of a frame
 
-    def send_check_commands(self, rate_hz=2, horizontal_flag = True, vertical_flag = True, device=1):
+    def send_check_commands(self, rate_hz=1, horizontal_flag = True, vertical_flag = True, device=1):
         while not rospy.is_shutdown():
             rate = rospy.Rate(rate_hz) # times per second
             if horizontal_flag:
@@ -250,24 +250,24 @@ def calculate_checksum(*args):
 
 #### read part
 
-def read_angle_from_port(ser, pub):
-    buffer = bytearray()  # Buffer to accumulate received data
-    while not rospy.is_shutdown():
-        if ser.in_waiting:
-            data = ser.read(ser.in_waiting)
-            buffer.extend(data)  # Add received data to the buffer
-            while len(buffer) >= 7:  # Assuming a frame is 7 bytes long
-                if buffer[0] == 0xFF:  # Check for the start of the frame
-                    frame = buffer[:7]  # Extract the frame
-                    buffer = buffer[7:]  # Remove the extracted frame from the buffer
-                    # Convert the frame to angle
-                    angle = get_angle_from_frame(frame)
-                    if angle is not None:
-                        # print(f"Received angle: {angle}")
-                        pub.publish(angle)
-                else:
-                    buffer.pop(0)  # Remove the first byte if it's not the start of a frame
-#### process part
+# def read_angle_from_port(ser, pub):
+#     buffer = bytearray()  # Buffer to accumulate received data
+#     while not rospy.is_shutdown():
+#         if ser.in_waiting:
+#             data = ser.read(ser.in_waiting)
+#             buffer.extend(data)  # Add received data to the buffer
+#             while len(buffer) >= 7:  # Assuming a frame is 7 bytes long
+#                 if buffer[0] == 0xFF:  # Check for the start of the frame
+#                     frame = buffer[:7]  # Extract the frame
+#                     buffer = buffer[7:]  # Remove the extracted frame from the buffer
+#                     # Convert the frame to angle
+#                     angle = get_angle_from_frame(frame)
+#                     if angle is not None:
+#                         # print(f"Received angle: {angle}")
+#                         pub.publish(angle)
+#                 else:
+#                     buffer.pop(0)  # Remove the first byte if it's not the start of a frame
+# #### process part
 
 def get_angle_from_frame(bytes_frame):
 

@@ -145,6 +145,7 @@ class SyncGetData:
 
             # self.wait_for_gimbal(angle, rate_gimbal)
             if self.check_gimbal(self.gimbal.h_angle, angle):
+                cur_angle = self.gimbal.h_angle
                 print(f"Get the {idx+1}th data")
                 bgr, depth, odom, lpose = self.get_data()
                 rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
@@ -156,7 +157,8 @@ class SyncGetData:
                 x, y, z = odom.position.x, odom.position.y, odom.position.z
                 positions_list.append(np.array([x, y, z])) 
                 lposes_list.append(lpose)
-                angles_list.append(angle)
+                # angles_list.append(angle)
+                angles_list.append(cur_angle)
                 print(f"Saved the {idx+1}/{len(target_angles_list)}th data")
             else:
                 print(f"Error in getting the {idx+1}th data")
@@ -214,23 +216,22 @@ class SyncGetData:
 
     def start(self):
 
-        date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
-        exp_name = f"{date}_exp"
+        # date = time.strftime("%Y-%m-%d-%H-%M", time.localtime())
+        # exp_name = f"{date}_exp"
+        exp_name = None
 
         while not rospy.is_shutdown():
 
             start_flag = input("Do you want to start the data collection? (y/n): ")
             if start_flag == 'y':
-                # try:
+                if exp_name is None:
+                    exp_name = input("Please input the experiment name: ")
                 print("Start the data collection")
-                save_thread = threading.Thread(target=self.save_data_gimbal, args=(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST))
-                save_thread.daemon = True
-                save_thread.start()
-                save_thread.join()
-                # self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST)
-                # except:
-                #     print("Error in saving data")
-                
+                # save_thread = threading.Thread(target=self.save_data_gimbal, args=(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST))
+                # save_thread.daemon = True
+                self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST)
+                # save_thread.start()
+                # save_thread.join()
             else:
                 print('Enter "y" to start the data collection')
 
