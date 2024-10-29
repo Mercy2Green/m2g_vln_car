@@ -214,13 +214,15 @@ class SyncGetData:
 
     def start(self):
 
+        exp_name = None
         while not rospy.is_shutdown():
 
             start_flag = input("Do you want to start the data collection? (y/n): ")
             if start_flag == 'y':
-                exp_name = input("Enter the experiment name: ")
+                if exp_name is None:
+                    exp_name = input("Enter the experiment name: ")
                 print("Start the data collection")
-                self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/{exp_name}", TARGET_ANGLE_LIST)       
+                self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST)       
             else:
                 print('Enter "y" to start the data collection')
 
