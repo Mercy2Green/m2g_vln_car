@@ -1,0 +1,33 @@
+{
+    "center_camera-intrinsic": {
+        "sensor_name": "center_camera",
+        "target_sensor_name": "center_camera",
+        "device_type": "camera",
+        "param_type": "intrinsic",
+        "param": {
+            "img_dist_w": 1280,
+            "img_dist_h": 720,
+            "cam_K": {
+                "rows": 3,
+                "cols": 3,
+                "type": 6,
+                "continuous": true,
+                "data": [
+                    [630.791,0,637.383],
+                    [0,610.789,358.676],
+                    [0,0,1]
+                    
+                ]
+            },
+            "cam_dist": {
+                "rows": 1,
+                "cols": 5,
+                "type": 6,
+                "continuous": true,
+                "data": [
+                    [-0.02216435 , 0.0188274  , 0.00137303 ,-0.0003934 , -0.00294592]
+                ]
+            }
+        }
+    }
+}

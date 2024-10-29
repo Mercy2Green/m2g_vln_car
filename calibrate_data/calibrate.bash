@@ -14,5 +14,5 @@ rosrun camera_calibration cameracalibrator.py --size 7x10 --square 0.015 image:=
 
 cd /home/uav/m2g_vln_car/SensorsCalibration/lidar2camera/manual_calib/
 
-./bin/run_lidar2camera data/0.png data/0.pcd data/center_camera-intrinsic.json data/top_center_lidar-to-center_camera-extrinsic.json
+./bin/run_lidar2camera data/2.png data/2.pcd data/center_camera-intrinsic.json data/top_center_lidar-to-center_camera-extrinsic.json
 
