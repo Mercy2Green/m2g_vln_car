@@ -1,0 +1,9 @@
+<launch>
+
+    <include file="$(find vln)/launch/orbbec_camera.launch" />
+
+    <include file="$(find vln)/launch/fast_lio.launch" />
+
+    <include file='$(find ranger_base)/launch/ranger_mini_v2.launch' /> 
+
+</launch>

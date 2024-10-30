@@ -137,7 +137,7 @@ class SyncGetData:
             self.gimbal.pan_tilt_move(angle, None)
             _rate_flag = 0
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                if _rate_flag % 5 == 0:
+                if _rate_flag % 2 == 0:
                     self.gimbal.pan_tilt_move(angle, None)
                 print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
                 _rate_flag += 1
