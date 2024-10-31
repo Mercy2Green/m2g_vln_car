@@ -62,7 +62,7 @@ class GimblaNode:
         # read_port_thread.daemon = True
         read_port_thread.start()
 
-        publish_rate = 7
+        publish_rate = 6
         angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate, self.horizontal_angle_pub, self.address))
         # angle_pub_thread.daemon = True
         angle_pub_thread.start()
@@ -170,7 +170,7 @@ class GimblaNode:
 def frame_control_horizontal_angle(angle, address=1):
     # the angle is the degree of the gimbal, it is a decimal number
     angle_int = int(angle*100) 
-    data1 = (angle_int >> 8) & 0xFF
+    data1 = (angle_int >> 8)
     data2 = angle_int & 0xFF
     hex_address = int(address)
     checksum = calculate_checksum(hex_address, 0x00, 0x4B, data1, data2)
