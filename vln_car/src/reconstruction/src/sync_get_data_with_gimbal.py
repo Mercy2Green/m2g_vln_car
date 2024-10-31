@@ -147,13 +147,16 @@ class SyncGetData:
         for idx, angle in enumerate(target_angles_list):
             self.past_h_angle = self.gimbal.h_angle
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                if self.past_h_angle == self.gimbal.h_angle:
+                with self.sensor_lock:
+                    past_h_angle = self.past_h_angle
+                    cur_h_angle = self.gimbal.h_angle
+                if past_h_angle == cur_h_angle:
                     self.gimbal.pan_tilt_move(angle, None)
                     print(f"Sending control signal to the gimbal to move to the {angle} degree")
-                elif angle >= 130 and self.past_h_angle == self.gimbal.h_angle:
+                elif angle >= 130 and past_h_angle == cur_h_angle:
                     self.gimbal.pan_tilt_move(angle + 10, None)
-                    print(f"Sending control signal to the gimbal to move to the {160} degree")
-                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
+                    print(f"Sending control signal to the gimbal to move to the {angle + 10} degree")
+                print(f"Wait for the gimbal to move to the {cur_h_angle}/{angle} angle")
                 self.past_h_angle = self.gimbal.h_angle
                 rate.sleep()
 
