@@ -19,7 +19,7 @@ class Gimbal_interface(object):
         ):
 
         self.gimbal_name = gimbal_name
-        self.h_angle = -1
+        self.h_angle = None
         self.v_angle = None
         self.target_h_angle = None
         self.target_v_angle = None
@@ -34,12 +34,12 @@ class Gimbal_interface(object):
             queue_size=1,
         )
 
-        self.pub_gimbal_v_control = rospy.Publisher(
-            # name="/" + self.gimbal_name + "/gimbal/v_control",
-            name = '/' + self.gimbal_name + gimbal_v_control_topic,
-            data_class=Float32,
-            queue_size=1,
-        )
+        # self.pub_gimbal_v_control = rospy.Publisher(
+        #     # name="/" + self.gimbal_name + "/gimbal/v_control",
+        #     name = '/' + self.gimbal_name + gimbal_v_control_topic,
+        #     data_class=Float32,
+        #     queue_size=1,
+        # )
 
         self.sub_gimbal_h_angle = rospy.Subscriber(
             # name = '/' + self.gimbal_name + '/gimbal/h_angle',
@@ -48,12 +48,12 @@ class Gimbal_interface(object):
             callback=self.gimbal_h_angle_cb,
         )
 
-        self.sub_gimbal_v_angle = rospy.Subscriber(
-            # name = '/' + self.gimbal_name + '/gimbal/v_angle',
-            name = '/' + self.gimbal_name + gimbal_v_angle_topic,
-            data_class=Float32,
-            callback=self.gimbal_v_angle_cb,
-        )
+        # self.sub_gimbal_v_angle = rospy.Subscriber(
+        #     # name = '/' + self.gimbal_name + '/gimbal/v_angle',
+        #     name = '/' + self.gimbal_name + gimbal_v_angle_topic,
+        #     data_class=Float32,
+        #     callback=self.gimbal_v_angle_cb,
+        # )
 
     def gimbal_h_angle_cb(self, msg):
         self.h_angle = msg.data
@@ -68,19 +68,18 @@ class Gimbal_interface(object):
         self.pub_gimbal_v_control.publish(angle)
 
     def pan_tilt_move(self, pan_angle, tilt_angle):
-        rate = rospy.Rate(0.5)
         if pan_angle is not None:
             if pan_angle >= self.h_angle_range[0] and pan_angle <= self.h_angle_range[1]:
                 self.control_gimbal_h_angle(pan_angle)
-                rate.sleep()
+                # rate.sleep()
             else:
                 rospy.logwarn("Pan angle out of range: " + str(pan_angle))
-        if tilt_angle is not None:
-            if tilt_angle >= self.v_angle_range[0] and tilt_angle <= self.v_angle_range[1]:
-                self.control_gimbal_v_angle(tilt_angle)
-                rate.sleep()
-            else:
-                rospy.logwarn("Tilt angle out of range: " + str(tilt_angle))
+        # if tilt_angle is not None:
+        #     if tilt_angle >= self.v_angle_range[0] and tilt_angle <= self.v_angle_range[1]:
+        #         self.control_gimbal_v_angle(tilt_angle)
+        #         # rate.sleep()
+        #     else:
+        #         rospy.logwarn("Tilt angle out of range: " + str(tilt_angle))
 
 # class Gimbla_Server(object):
 

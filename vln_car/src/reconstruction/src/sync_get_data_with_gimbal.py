@@ -56,16 +56,20 @@ class SyncGetData:
         while not rospy.is_shutdown():
             if self.rgb_img is not None and self.depth_img is not None and self.odom is not None:
             # if self.rgb_img is not None and self.depth_img is not None:
-                break
-            print("Waiting for sensor data...")
-            time.sleep(1)
+                if self.gimbal.h_angle is not None:
+                    break
+                else:
+                    print("Waiting for gimbal data...")
+                    time.sleep(1)
+            else:
+                print("Waiting for sensor data...")
+                time.sleep(1)
 
     def check_gimbal(self, angle, target_angle, threshold=0.05):
         if abs(angle - target_angle) < threshold:
             return True
         else:
             return False
-
 
     def _sync_callback(self, rgb, depth, odom):
 
@@ -116,7 +120,6 @@ class SyncGetData:
     def save_data_gimbal(self, save_root_path, target_angles_list):
 
         rate = rospy.Rate(1) # 1hz
-        rate_gimbal = rospy.Rate(0.2)
 
         images_list = []
         images_name_list = []
@@ -136,10 +139,12 @@ class SyncGetData:
         for idx, angle in enumerate(target_angles_list):
             self.gimbal.pan_tilt_move(angle, None)
             _rate_flag = 0
+            past_h_angle = self.gimbal.h_angle
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                if _rate_flag % 2 == 0:
+                if past_h_angle == self.gimbal.h_angle:
                     self.gimbal.pan_tilt_move(angle, None)
-                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
+                    past_h_angle = self.gimbal.h_angle
+                    print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
                 _rate_flag += 1
                 rate.sleep()
 
@@ -193,11 +198,13 @@ class SyncGetData:
             config.write(f)
         print("#######################*******Finish saving data********#######################")
 
+        
         while self.check_gimbal(self.gimbal.h_angle, 0) is False:
-            self.gimbal.pan_tilt_move(0, None)
-            print(f"Wait for the gimbal to go back to the 0 degree")
-            rate_gimbal.sleep()
-        # self.wait_for_gimbal(0, rate_gimbal)
+            if past_h_angle == self.gimbal.h_angle:
+                self.gimbal.pan_tilt_move(0, None)
+                past_h_angle = self.gimbal.h_angle
+            print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
+            rate.sleep()
         print("*******Gimbal ready********")
             
     def wait_for_gimbal(self, target_angle, control_rate):
