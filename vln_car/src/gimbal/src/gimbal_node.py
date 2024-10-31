@@ -60,12 +60,12 @@ class GimblaNode:
         rospy.loginfo("Starting gimbla node")
 
         read_port_thread = threading.Thread(target=self.read_from_port, args=(self.ser,))
-        read_port_thread.daemon = True
+        # read_port_thread.daemon = True
         read_port_thread.start()
 
         publish_rate = 1
         angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate, self.horizontal_angle_pub, self.address))
-        angle_pub_thread.daemon = True
+        # angle_pub_thread.daemon = True
         angle_pub_thread.start()
 
         while not rospy.is_shutdown():

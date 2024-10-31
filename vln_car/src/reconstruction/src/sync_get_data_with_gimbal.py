@@ -119,7 +119,7 @@ class SyncGetData:
     
     def save_data_gimbal(self, save_root_path, target_angles_list):
 
-        rate = rospy.Rate(1) # 1hz
+        rate = rospy.Rate(0.3) # 1.3hz
 
         images_list = []
         images_name_list = []
