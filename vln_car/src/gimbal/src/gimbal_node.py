@@ -7,7 +7,7 @@ debugpy.listen(2458)
 
 import rospy
 import threading
-from std_msgs.msg import Float32, Float32MultiArray
+from std_msgs.msg import Float32, Float32MultiArray, Int8
 import serial
 
 class GimblaNode:
@@ -47,7 +47,7 @@ class GimblaNode:
         # self.vertical_angle_pub = rospy.Publisher('gimbla_vertical_angle', Float32, queue_size=10)
         # self.target_angle_pub = rospy.Publisher('gimbla_target_angle', Float32, queue_size=1)
 
-        self.control_horiz_angle_sub = rospy.Subscriber('/gimbal/h_control', Float32, self.get_target_and_turn, callback_args='horizontal')
+        self.control_horiz_angle_sub = rospy.Subscriber('/gimbal/h_control', Float32, self.get_target_and_turn, callback_args='horizontal', queue_size=5)
         
         # Start threads
         self.start_gimbla()
@@ -62,7 +62,7 @@ class GimblaNode:
         # read_port_thread.daemon = True
         read_port_thread.start()
 
-        publish_rate = 1
+        publish_rate = 7
         angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate, self.horizontal_angle_pub, self.address))
         # angle_pub_thread.daemon = True
         angle_pub_thread.start()
@@ -253,7 +253,7 @@ def get_angle_from_frame(bytes_frame):
     # also need to check the checksum
     checksum = calculate_checksum(bytes_frame[1], bytes_frame[2], bytes_frame[3], bytes_frame[4], bytes_frame[5])
     if checksum != bytes_frame[6]:
-        Warning("Checksum mismatch")
+        rospy.logwarn("Checksum mismatch")
         return None
 
     return angle_int / 100

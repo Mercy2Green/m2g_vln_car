@@ -33,7 +33,7 @@ class Gimbal_interface(object):
             # name="/" + self.gimbal_name + "/gimbal/h_control",
             name = '/' + self.gimbal_name + gimbal_h_control_topic,
             data_class=Float32,
-            queue_size=1,
+            queue_size=5,
         )
 
         # self.pub_gimbal_v_control = rospy.Publisher(
@@ -48,6 +48,7 @@ class Gimbal_interface(object):
             name = '/' + self.gimbal_name + gimbal_h_angle_topic,
             data_class=Float32,
             callback=self.gimbal_h_angle_cb,
+            queue_size=10,
         )
 
         # self.sub_gimbal_v_angle = rospy.Subscriber(
@@ -58,8 +59,8 @@ class Gimbal_interface(object):
         # )
 
     def gimbal_h_angle_cb(self, msg):
+        self.h_angle = round(msg.data, 2)
         self.past_h_angle = self.h_angle
-        self.h_angle = msg.data
 
     def gimbal_v_angle_cb(self, msg):
         self.v_angle = msg.data
@@ -74,6 +75,7 @@ class Gimbal_interface(object):
         if pan_angle is not None:
             if pan_angle >= self.h_angle_range[0] and pan_angle <= self.h_angle_range[1]:
                 self.control_gimbal_h_angle(pan_angle)
+
                 # rate.sleep()
             else:
                 rospy.logwarn("Pan angle out of range: " + str(pan_angle))

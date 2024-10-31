@@ -44,6 +44,8 @@ class SyncGetData:
 
         self.rate_gimbal = rospy.Rate(10)
 
+        self.past_h_angle = None
+
         self.rgb_sub = message_filters.Subscriber(RGB_SUB_TOPIC, Image)
         self.depth_sub = message_filters.Subscriber(DEPTH_SUB_TOPIC, Image)
         self.odom_sub = message_filters.Subscriber(ODOM_SUB_TOPIC, Odometry)
@@ -69,8 +71,11 @@ class SyncGetData:
                 time.sleep(1)
 
     def check_gimbal(self, angle, target_angle, threshold=0.05):
-        if abs(angle - target_angle) < threshold:
-            return True
+        if angle is not None:
+            if abs(angle - target_angle) < threshold:
+                return True
+            else :
+                return False
         else:
             return False
 
@@ -122,7 +127,7 @@ class SyncGetData:
     
     def save_data_gimbal(self, save_root_path, target_angles_list):
 
-        rate = rospy.Rate(0.3) # 1.3hz
+        rate = rospy.Rate(6.1) # 1.3hz
 
         images_list = []
         images_name_list = []
@@ -140,16 +145,17 @@ class SyncGetData:
         # Randomly generate a string for the name of config[i]
         vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         for idx, angle in enumerate(target_angles_list):
-            self.gimbal.pan_tilt_move(angle, None)
-            if self.gimbal.h_angle is not None:
-                while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                    if self.gimbal.past_h_angle == self.gimbal.h_angle:
-                        self.gimbal.pan_tilt_move(self.gimbal.past_h_angle, None)
-                        rate.sleep()
-                        self.gimbal.pan_tilt_move(angle, None)
-                        print(f"Sending control signal to the gimbal to move to the {angle} degree")
-                    print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
-                    rate.sleep()
+            self.past_h_angle = self.gimbal.h_angle
+            while self.check_gimbal(self.gimbal.h_angle, angle) is False:
+                if self.past_h_angle == self.gimbal.h_angle:
+                    self.gimbal.pan_tilt_move(angle, None)
+                    print(f"Sending control signal to the gimbal to move to the {angle} degree")
+                elif angle >= 130 and self.past_h_angle == self.gimbal.h_angle:
+                    self.gimbal.pan_tilt_move(angle + 10, None)
+                    print(f"Sending control signal to the gimbal to move to the {160} degree")
+                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
+                self.past_h_angle = self.gimbal.h_angle
+                rate.sleep()
 
             # self.wait_for_gimbal(angle, rate_gimbal)
             if self.check_gimbal(self.gimbal.h_angle, angle):
@@ -201,12 +207,12 @@ class SyncGetData:
             config.write(f)
         print("#######################*******Finish saving data********#######################")
 
-        
+        back_rate = rospy.Rate(0.1)
         while self.check_gimbal(self.gimbal.h_angle, 0) is False:
             if self.gimbal.past_h_angle == self.gimbal.h_angle:
                 self.gimbal.pan_tilt_move(0, None)
             print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
-            rate.sleep()
+            back_rate.sleep()
         print("*******Gimbal ready********")
             
     def wait_for_gimbal(self, target_angle, control_rate):
