@@ -24,6 +24,8 @@ class Gimbal_interface(object):
         self.target_h_angle = None
         self.target_v_angle = None
 
+        self.past_h_angle = None
+
         self.h_angle_range = [0, 350]
         self.v_angle_range = [-60, 20]
 
@@ -56,6 +58,7 @@ class Gimbal_interface(object):
         # )
 
     def gimbal_h_angle_cb(self, msg):
+        self.past_h_angle = self.h_angle
         self.h_angle = msg.data
 
     def gimbal_v_angle_cb(self, msg):

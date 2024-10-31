@@ -41,3 +41,4 @@ datasets/
 *.out
 *.app
 vln_car/src/fast_lio_mid360/Log/mat_pre.txt
+vln_car/src/reconstruction/src/__pycache__/gimbal_interface.cpython-38.pyc

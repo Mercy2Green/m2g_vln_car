@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # Using this code to get the sync data from the camera and the lidar
 
+import debugpy
+debugpy.listen(2457)
+
 from configparser import ConfigParser
 import os
 import random
@@ -138,14 +141,15 @@ class SyncGetData:
         vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         for idx, angle in enumerate(target_angles_list):
             self.gimbal.pan_tilt_move(angle, None)
-            past_h_angle = self.gimbal.h_angle
-            while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                if past_h_angle == self.gimbal.h_angle:
-                    past_h_angle = self.gimbal.h_angle
-                    self.gimbal.pan_tilt_move(angle, None)
-                    print(f"Sending control signal to the gimbal to move to the {angle} degree")
-                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
-                rate.sleep()
+            if self.gimbal.h_angle is not None:
+                while self.check_gimbal(self.gimbal.h_angle, angle) is False:
+                    if self.gimbal.past_h_angle == self.gimbal.h_angle:
+                        self.gimbal.pan_tilt_move(self.gimbal.past_h_angle, None)
+                        rate.sleep()
+                        self.gimbal.pan_tilt_move(angle, None)
+                        print(f"Sending control signal to the gimbal to move to the {angle} degree")
+                    print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
+                    rate.sleep()
 
             # self.wait_for_gimbal(angle, rate_gimbal)
             if self.check_gimbal(self.gimbal.h_angle, angle):
@@ -199,8 +203,7 @@ class SyncGetData:
 
         
         while self.check_gimbal(self.gimbal.h_angle, 0) is False:
-            if past_h_angle == self.gimbal.h_angle:
-                past_h_angle = self.gimbal.h_angle
+            if self.gimbal.past_h_angle == self.gimbal.h_angle:
                 self.gimbal.pan_tilt_move(0, None)
             print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
             rate.sleep()

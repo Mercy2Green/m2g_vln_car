@@ -7,9 +7,20 @@
         "request": "attach",
         "connect": {
           "host": "localhost",
-          "port": 5678
+          "port": 2457
+        },
+        "justMyCode": false
+      },
+      {
+        "name": "Python: gimbal Remote Attach",
+        "type": "debugpy",
+        "request": "attach",
+        "connect": {
+          "host": "localhost",
+          "port": 2458
         },
         "justMyCode": false
       }
+
     ]
   }

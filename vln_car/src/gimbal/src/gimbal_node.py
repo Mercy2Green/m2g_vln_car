@@ -2,8 +2,7 @@
 
 from time import sleep
 import debugpy
-
-# debugpy.listen(5678)
+debugpy.listen(2458)
 # debugpy.wait_for_client()
 
 import rospy
@@ -76,7 +75,8 @@ class GimblaNode:
                 self.target_angle = msg.data
                 target_angle = self.target_angle
                 if target_angle is not None:
-                    control_data_frame = frame_control_angle(angle=target_angle, axis=axis)
+                    # control_data_frame = frame_control_angle(angle=target_angle, axis=axis)
+                    control_data_frame = frame_control_horizontal_angle(angle=target_angle, address=self.address)
                     with self.frame_lock:
                         self.ser.reset_output_buffer()
                         self.ser.write(control_data_frame)
