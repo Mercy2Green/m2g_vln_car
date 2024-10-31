@@ -21,7 +21,7 @@ class GimblaNode:
     def __init__(
             self,
             portx="/dev/ttyUSB0",
-            bps=9600,
+            bps=2400,
             timex=5,
             address=1
             ):
@@ -73,14 +73,13 @@ class GimblaNode:
 
     def get_target_and_turn(self, msg, axis = 'horizontal'):
         if msg.data is not None:
-            with self.frame_lock:
                 self.target_angle = msg.data
                 target_angle = self.target_angle
                 if target_angle is not None:
                     control_data_frame = frame_control_angle(angle=target_angle, axis=axis)
-                    self.ser.flushOutput()
-                    self.ser.flushInput()
-                    self.ser.write(control_data_frame)
+                    with self.frame_lock:
+                        self.ser.reset_output_buffer()
+                        self.ser.write(control_data_frame)
                     sleep(0.1)
 
     def check_angle_if_in_place(self, msg):
@@ -113,7 +112,9 @@ class GimblaNode:
         rate = rospy.Rate(rate_hz)
         while not rospy.is_shutdown():
             data_frame = frame_check_angle(axis='horizontal', address=device)
-            self.ser.write(data_frame)
+            with self.frame_lock:
+                self.ser.reset_output_buffer()
+                self.ser.write(data_frame)
             if self.frame:
                 # with self.frame_lock:
                 frame = self.frame
@@ -130,15 +131,16 @@ class GimblaNode:
     def read_from_port(self, ser):
         while not rospy.is_shutdown():
             if ser.in_waiting:
-                data = ser.read(ser.in_waiting)
-                self.buffer.extend(data)  # Add received data to the buffer
-                while len(self.buffer) >= 7:  # Assuming a frame is 7 bytes long
-                    if self.buffer[0] == 0xFF:  # Check for the start of the frame
-                        frame = self.buffer[:7]  # Extract the frame
-                        self.buffer = self.buffer[7:]  # Remove the extracted frame from the buffer
-                        self.frame = frame
-                    else:
-                        self.buffer.pop(0)  # Remove the first byte if it's not the start of a frame
+                with self.frame_lock:
+                    data = ser.read(ser.in_waiting)
+                    self.buffer.extend(data)  # Add received data to the buffer
+                    while len(self.buffer) >= 7:  # Assuming a frame is 7 bytes long
+                        if self.buffer[0] == 0xFF:  # Check for the start of the frame
+                            frame = self.buffer[:7]  # Extract the frame
+                            self.buffer = self.buffer[7:]  # Remove the extracted frame from the buffer
+                            self.frame = frame
+                        else:
+                            self.buffer.pop(0)  # Remove the first byte if it's not the start of a frame
 
     def send_check_commands(self, rate_hz=2, horizontal_flag = True, vertical_flag = True, device=1):
         while not rospy.is_shutdown():
@@ -258,7 +260,7 @@ def get_angle_from_frame(bytes_frame):
 
 if __name__ == '__main__':
     try:
-        node = GimblaNode(portx="/dev/ttyUSB0", bps=9600, timex=5, address=1)
+        node = GimblaNode(portx="/dev/ttyUSB0", bps=2400, timex=5, address=1)
         node.run()
     except rospy.ROSInterruptException:
         pass

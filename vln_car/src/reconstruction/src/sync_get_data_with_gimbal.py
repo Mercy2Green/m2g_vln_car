@@ -55,12 +55,12 @@ class SyncGetData:
 
         while not rospy.is_shutdown():
             if self.rgb_img is not None and self.depth_img is not None and self.odom is not None:
-            # if self.rgb_img is not None and self.depth_img is not None:
-                if self.gimbal.h_angle is not None:
-                    break
-                else:
-                    print("Waiting for gimbal data...")
-                    time.sleep(1)
+                # if self.gimbal.h_angle is not None:
+                #     break
+                # else:
+                #     print("Waiting for gimbal data...")
+                #     time.sleep(1)
+                break
             else:
                 print("Waiting for sensor data...")
                 time.sleep(1)
@@ -138,14 +138,13 @@ class SyncGetData:
         vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         for idx, angle in enumerate(target_angles_list):
             self.gimbal.pan_tilt_move(angle, None)
-            _rate_flag = 0
             past_h_angle = self.gimbal.h_angle
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
                 if past_h_angle == self.gimbal.h_angle:
-                    self.gimbal.pan_tilt_move(angle, None)
                     past_h_angle = self.gimbal.h_angle
-                    print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
-                _rate_flag += 1
+                    self.gimbal.pan_tilt_move(angle, None)
+                    print(f"Sending control signal to the gimbal to move to the {angle} degree")
+                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
                 rate.sleep()
 
             # self.wait_for_gimbal(angle, rate_gimbal)
@@ -201,8 +200,8 @@ class SyncGetData:
         
         while self.check_gimbal(self.gimbal.h_angle, 0) is False:
             if past_h_angle == self.gimbal.h_angle:
-                self.gimbal.pan_tilt_move(0, None)
                 past_h_angle = self.gimbal.h_angle
+                self.gimbal.pan_tilt_move(0, None)
             print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
             rate.sleep()
         print("*******Gimbal ready********")
@@ -235,10 +234,17 @@ class SyncGetData:
 
             time.sleep(0.5)
 
+    def test_start(self):
+        while not rospy.is_shutdown():
+
+            self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/test", TARGET_ANGLE_LIST)
+
+            time.sleep(0.5)
 
 if __name__ == "__main__":
     try:
-        SyncGetData().start()
+        # SyncGetData().start()
+        SyncGetData().test_start()
     except rospy.ROSInterruptException:
         pass
 
