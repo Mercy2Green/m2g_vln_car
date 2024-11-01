@@ -127,7 +127,7 @@ class SyncGetData:
     
     def save_data_gimbal(self, save_root_path, target_angles_list):
 
-        rate = rospy.Rate(5.9) # 1.3hz
+        rate = rospy.Rate(0.25) # 1.3hz
 
         images_list = []
         images_name_list = []
@@ -245,8 +245,10 @@ class SyncGetData:
 
 if __name__ == "__main__":
     try:
+        get_data = SyncGetData()
+        get_data.start()
         # SyncGetData().start()
-        SyncGetData().test_start()
+        # SyncGetData().test_start()
     except rospy.ROSInterruptException:
         pass
 

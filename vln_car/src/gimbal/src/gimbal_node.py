@@ -62,7 +62,7 @@ class GimblaNode:
         # read_port_thread.daemon = True
         read_port_thread.start()
 
-        publish_rate = 6
+        publish_rate = 0.5
         angle_pub_thread = threading.Thread(target=self.get_angle_and_publish, args=(publish_rate, self.horizontal_angle_pub, self.address))
         # angle_pub_thread.daemon = True
         angle_pub_thread.start()
