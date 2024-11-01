@@ -37,7 +37,10 @@ class GimblaNode:
         rospy.loginfo("Starting gimbla node")
 
         while not rospy.is_shutdown():
-            angle = float(input(f"Enter the h angle to control the gimbal: "))
+            try:
+                angle = float(input(f"Enter the h angle to control the gimbal: "))
+            except:
+                print("Only input number")
             self.target_angle_pub.publish(angle)
             sleep(0.5) # This is essential cause the device need time to fresh the self.target_angle         
 

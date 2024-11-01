@@ -150,27 +150,28 @@ class SyncGetData:
                 self.gimbal.pan_tilt_move(angle, None)
                 rate.sleep()
 
-            while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
-                rate.sleep()
-
+            while True:
+                t = input(f'Please inter t to continue {angle}:')
+                if t == 't':
+                    break
+                
             # self.wait_for_gimbal(angle, rate_gimbal)
-            if self.check_gimbal(self.gimbal.h_angle, angle):
-                print(f"Get the {idx+1}th data")
-                bgr, depth, odom, lpose = self.get_data()
-                rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-                images_list.append(rgb)
-                images_name_list.append(f"{vp_name}_i_{idx}.png")
-                depths_list.append(depth)
-                depths_name_list.append(f"{vp_name}_d_{idx}.png")
-                odoms_list.append(odom)
-                x, y, z = odom.position.x, odom.position.y, odom.position.z
-                positions_list.append(np.array([x, y, z])) 
-                lposes_list.append(lpose)
-                angles_list.append(angle)
-                print(f"Saved the {idx+1}/{len(target_angles_list)}th data")
-            else:
-                print(f"Error in getting the {idx+1}th data")
+            # if self.check_gimbal(self.gimbal.h_angle, angle):
+            print(f"Get the {idx+1}th data")
+            bgr, depth, odom, lpose = self.get_data()
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            images_list.append(rgb)
+            images_name_list.append(f"{vp_name}_i_{idx}.png")
+            depths_list.append(depth)
+            depths_name_list.append(f"{vp_name}_d_{idx}.png")
+            odoms_list.append(odom)
+            x, y, z = odom.position.x, odom.position.y, odom.position.z
+            positions_list.append(np.array([x, y, z])) 
+            lposes_list.append(lpose)
+            angles_list.append(angle)
+            print(f"Saved the {idx+1}/{len(target_angles_list)}th data")
+            # else:
+            #     print(f"Error in getting the {idx+1}th data")
 
 
         for i in range(3):
