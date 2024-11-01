@@ -210,10 +210,10 @@ class SyncGetData:
         print("#######################*******Finish saving data********#######################")
 
         # back_rate = rospy.Rate(0.1)
-        while self.check_gimbal(self.gimbal.h_angle, 0) is False:
-            self.gimbal.pan_tilt_move(0, None)
-            print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
-            rate.sleep()
+        # while self.check_gimbal(self.gimbal.h_angle, 0) is False:
+        #     self.gimbal.pan_tilt_move(0, None)
+        #     print(f"Wait for the gimbal to go back to the {self.gimbal.h_angle}/0 degree")
+        #     rate.sleep()
         print("*******Gimbal ready********")
             
     def wait_for_gimbal(self, target_angle, control_rate):
