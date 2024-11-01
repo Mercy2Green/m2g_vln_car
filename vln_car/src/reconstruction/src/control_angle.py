@@ -139,7 +139,6 @@ class GimblaNode:
 
     def run(self):
         rospy.spin()
-        self.ser.close()
 
 #### communication part
 
