@@ -145,6 +145,11 @@ class SyncGetData:
         # Randomly generate a string for the name of config[i]
         vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         for idx, angle in enumerate(target_angles_list):
+
+            for i in range(3):
+                self.gimbal.pan_tilt_move(angle, None)
+                rate.sleep()
+
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
                 print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
                 rate.sleep()
@@ -167,7 +172,11 @@ class SyncGetData:
             else:
                 print(f"Error in getting the {idx+1}th data")
 
-        self.gimbal.pan_tilt_move(0, None)
+
+        for i in range(3):
+            self.gimbal.pan_tilt_move(0, None)
+            rate.sleep()
+        # self.gimbal.pan_tilt_move(0, None)
 
         os.makedirs(save_root_path, exist_ok=True)
         os.makedirs(f"{save_root_path}/camera_parameter", exist_ok=True)
