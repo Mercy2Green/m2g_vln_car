@@ -33,7 +33,7 @@ class Gimbal_interface(object):
             # name="/" + self.gimbal_name + "/gimbal/h_control",
             name = '/' + self.gimbal_name + gimbal_h_control_topic,
             data_class=Float32,
-            queue_size=5,
+            queue_size=1
         )
 
         # self.pub_gimbal_v_control = rospy.Publisher(
@@ -48,7 +48,7 @@ class Gimbal_interface(object):
             name = '/' + self.gimbal_name + gimbal_h_angle_topic,
             data_class=Float32,
             callback=self.gimbal_h_angle_cb,
-            queue_size=10,
+            queue_size=1
         )
 
         # self.sub_gimbal_v_angle = rospy.Subscriber(

@@ -127,7 +127,7 @@ class SyncGetData:
     
     def save_data_gimbal(self, save_root_path, target_angles_list):
 
-        rate = rospy.Rate(0.25) # 1.3hz
+        rate = rospy.Rate(1) # 1.3hz
 
         images_list = []
         images_name_list = []
@@ -146,9 +146,7 @@ class SyncGetData:
         vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         for idx, angle in enumerate(target_angles_list):
             while self.check_gimbal(self.gimbal.h_angle, angle) is False:
-                cur_angle = self.gimbal.h_angle
-                self.gimbal.pan_tilt_move(angle, None)
-                print(f"Wait for the gimbal to move to the {cur_angle}/{angle} angle")
+                print(f"Wait for the gimbal to move to the {self.gimbal.h_angle}/{angle} angle")
                 rate.sleep()
 
             # self.wait_for_gimbal(angle, rate_gimbal)
