@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/uav/m2g_vln_car/vln_car/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/vins/camera_models/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/fast_lio_mid360/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/interbotix_ros_toolboxes/interbotix_common_toolbox/interbotix_tf_tools/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/livox_camera_calib/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/OrbbecSDK_ROS1/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/ranger_ros/ranger_base/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/reconstruction/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/ugv_sdk/include/**",
+        "/home/uav/m2g_vln_car/vln_car/src/vln/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
