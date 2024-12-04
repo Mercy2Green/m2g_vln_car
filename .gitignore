@@ -8,6 +8,8 @@ vln_car/build/
 vln_car/src/vln/src/__pycache__/
 datasets/
 
+hpx_test/
+
 # Prerequisites
 *.d
 
