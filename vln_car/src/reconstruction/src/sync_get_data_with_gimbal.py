@@ -23,6 +23,8 @@ from nav_msgs.msg import Odometry
 
 import message_filters
 
+import keyboard
+
 from param import L2C_TRANSFORM, RGB_SUB_TOPIC, DEPTH_SUB_TOPIC, ODOM_SUB_TOPIC, CAMERA_INTRINSIC, G2L_TRANSFORM, C2G_TRANSFORM, TARGET_ANGLE_LIST
 from gimbal_interface import Gimbal_interface
 
@@ -125,7 +127,79 @@ class SyncGetData:
             # cpose = copy.deepcopy(self.cpose)
         return rgb, depth, odom, lpose
     
-    def save_data_gimbal(self, save_root_path, target_angles_list):
+    def save_data_path(self, save_root_path, vp_id_start):
+
+        rate = rospy.Rate(1) # HZ
+
+        images_list = []
+        images_name_list = []
+        depths_list = []
+        depths_name_list = []
+        odoms_list = []
+        lposes_list = []
+        positions_list = []
+        angles_list = []
+        camera_intrinsics = CAMERA_INTRINSIC
+        config = ConfigParser()
+
+        vp_id_end = vp_id_start + 1
+        config_section_name = f"vp_{vp_id_start}_{vp_id_end}"
+
+        idx = 0
+
+        while not keyboard.is_pressed('q'):
+
+            print(f"Recording data: {config_section_name}_{idx}, press 'q' to stop")
+            # Get the image
+            bgr, depth, odom, lpose = self.get_data()
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            images_list.append(rgb)
+            images_name_list.append(f"{config_section_name}_i_{idx}.png")
+            depths_list.append(depth)
+            depths_name_list.append(f"{config_section_name}_d_{idx}.png")
+            odoms_list.append(odom)
+            x, y, z = odom.position.x, odom.position.y, odom.position.z
+            positions_list.append(np.array([x, y, z]))
+            lposes_list.append(lpose)
+            angles_list.append(0)
+
+            idx += 1
+            rate.sleep()
+
+        os.makedirs(save_root_path, exist_ok=True)
+        os.makedirs(f"{save_root_path}/camera_parameter", exist_ok=True)
+        os.makedirs(f"{save_root_path}/color_image", exist_ok=True)
+        os.makedirs(f"{save_root_path}/depth_image", exist_ok=True)
+
+        for i in range(len(images_list)):
+
+            cv2.imwrite(f"{save_root_path}/color_image/{images_name_list[i]}", images_list[i])
+            cv2.imwrite(f"{save_root_path}/depth_image/{depths_name_list[i]}", depths_list[i])
+
+            config[config_section_name] = {
+                'rgb_name': images_name_list,
+                'depth_name': depths_name_list,
+                'lpose': lposes_list,
+                'heading': angles_list,
+                'position': positions_list,
+                'camera_intrinsics': camera_intrinsics.tolist(),  # convert numpy array to list
+                'l2c_transform': L2C_TRANSFORM.tolist(),
+                'c2g_transform': C2G_TRANSFORM.tolist(),
+                'g2l_transform': G2L_TRANSFORM.tolist(),
+                'target_angle_list': None,
+                'heading_direction': 'CounterClockwise',
+                'is_path': True,
+                }
+
+            print(f"Saved {i+1}/{len(images_list)}th data")
+            
+        with open(f"{save_root_path}/camera_parameter/camera_parameter.conf", 'a') as f:
+            config.write(f)
+        print("#######################*******Finish saving data********#######################")
+
+        
+    
+    def save_data_gimbal(self, save_root_path, target_angles_list, vp_id):
 
         rate = rospy.Rate(1) # 1.3hz
 
@@ -142,8 +216,10 @@ class SyncGetData:
         
         config = ConfigParser()
 
-        # Randomly generate a string for the name of config[i]
-        vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        # # Randomly generate a string for the name of config[i]
+        # vp_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        config_section_name = f"vp_{vp_id}"
+
         for idx, angle in enumerate(target_angles_list):
 
             for i in range(3):
@@ -166,9 +242,9 @@ class SyncGetData:
             bgr, depth, odom, lpose = self.get_data()
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
             images_list.append(rgb)
-            images_name_list.append(f"{vp_name}_i_{idx}.png")
+            images_name_list.append(f"{config_section_name}_i_{idx}.png")
             depths_list.append(depth)
-            depths_name_list.append(f"{vp_name}_d_{idx}.png")
+            depths_name_list.append(f"{config_section_name}_d_{idx}.png")
             odoms_list.append(odom)
             x, y, z = odom.position.x, odom.position.y, odom.position.z
             positions_list.append(np.array([x, y, z])) 
@@ -194,7 +270,7 @@ class SyncGetData:
             cv2.imwrite(f"{save_root_path}/color_image/{images_name_list[i]}", images_list[i])
             cv2.imwrite(f"{save_root_path}/depth_image/{depths_name_list[i]}", depths_list[i])
 
-            config[vp_name] = {
+            config[config_section_name] = {
                 'rgb_name': images_name_list,
                 'depth_name': depths_name_list,
                 'lpose': lposes_list,
@@ -206,6 +282,7 @@ class SyncGetData:
                 'g2l_transform': G2L_TRANSFORM.tolist(),
                 'target_angle_list': target_angles_list.tolist(),
                 'heading_direction': 'CounterClockwise',
+                'is_path': False,
                 }
 
             print(f"Saved {i+1}/{len(images_list)}th data")
@@ -236,14 +313,32 @@ class SyncGetData:
     def start(self):
 
         exp_name = None
+        vp_idx = None
+        mode_flag = None
         while not rospy.is_shutdown():
 
             start_flag = input("Do you want to start the data collection? (y/n): ")
             if start_flag == 'y':
                 if exp_name is None:
                     exp_name = input("Enter the experiment name: ")
+                if vp_idx is None:
+                    vp_idx = input("Enter the viewpoint index(Start at 0): ")
+                    try:
+                        vp_idx = int(vp_idx)
+                    except:
+                        print("Please enter a number")
+                        continue
+
                 print("Start the data collection")
-                self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST)       
+                print(f"Current location: vp_{vp_idx}, last mode flag: {mode_flag}, ")
+                mode_flag = input("Enter 'p' for path data collection, 'g' for gimbal data collection: ")
+                if mode_flag == 'p':
+                    self.save_data_path(f"/home/uav/m2g_vln_car/datasets/path/{exp_name}", vp_idx)
+                elif mode_flag == 'g':
+                    self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST, vp_idx)
+                    vp_idx += 1
+                else:
+                    print("Please enter 'l' or 'g'")      
             else:
                 print('Enter "y" to start the data collection')
 
