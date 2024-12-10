@@ -23,10 +23,17 @@ from nav_msgs.msg import Odometry
 
 import message_filters
 
-import keyboard
+from pynput import keyboard
 
 from param import L2C_TRANSFORM, RGB_SUB_TOPIC, DEPTH_SUB_TOPIC, ODOM_SUB_TOPIC, CAMERA_INTRINSIC, G2L_TRANSFORM, C2G_TRANSFORM, TARGET_ANGLE_LIST
 from gimbal_interface import Gimbal_interface
+
+def on_press(key, goal_key='q'):
+    try:
+        if key.char == goal_key:
+            return False  # Stop listener
+    except AttributeError:
+        pass
 
 class SyncGetData:
 
@@ -129,7 +136,7 @@ class SyncGetData:
     
     def save_data_path(self, save_root_path, vp_id_start):
 
-        rate = rospy.Rate(1) # HZ
+        rate = rospy.Rate(5) # HZ
 
         images_list = []
         images_name_list = []
@@ -147,7 +154,12 @@ class SyncGetData:
 
         idx = 0
 
-        while not keyboard.is_pressed('q'):
+        # I want to capture the image continuously, when I press the 'q' key, the loop will stop
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+
+
+        while listener.running:
 
             print(f"Recording data: {config_section_name}_{idx}, press 'q' to stop")
             # Get the image
@@ -166,15 +178,13 @@ class SyncGetData:
             idx += 1
             rate.sleep()
 
+        listener.stop()
         os.makedirs(save_root_path, exist_ok=True)
         os.makedirs(f"{save_root_path}/camera_parameter", exist_ok=True)
         os.makedirs(f"{save_root_path}/color_image", exist_ok=True)
         os.makedirs(f"{save_root_path}/depth_image", exist_ok=True)
 
         for i in range(len(images_list)):
-
-            cv2.imwrite(f"{save_root_path}/color_image/{images_name_list[i]}", images_list[i])
-            cv2.imwrite(f"{save_root_path}/depth_image/{depths_name_list[i]}", depths_list[i])
 
             config[config_section_name] = {
                 'rgb_name': images_name_list,
@@ -186,10 +196,13 @@ class SyncGetData:
                 'l2c_transform': L2C_TRANSFORM.tolist(),
                 'c2g_transform': C2G_TRANSFORM.tolist(),
                 'g2l_transform': G2L_TRANSFORM.tolist(),
-                'target_angle_list': None,
+                'target_angle_list': 'None',
                 'heading_direction': 'CounterClockwise',
                 'is_path': True,
                 }
+            
+            cv2.imwrite(f"{save_root_path}/color_image/{images_name_list[i]}", images_list[i])
+            cv2.imwrite(f"{save_root_path}/depth_image/{depths_name_list[i]}", depths_list[i])
 
             print(f"Saved {i+1}/{len(images_list)}th data")
             
@@ -321,24 +334,24 @@ class SyncGetData:
             if start_flag == 'y':
                 if exp_name is None:
                     exp_name = input("Enter the experiment name: ")
-                if vp_idx is None:
-                    vp_idx = input("Enter the viewpoint index(Start at 0): ")
-                    try:
-                        vp_idx = int(vp_idx)
-                    except:
-                        print("Please enter a number")
-                        continue
 
                 print("Start the data collection")
                 print(f"Current location: vp_{vp_idx}, last mode flag: {mode_flag}, ")
+
+                vp_idx = input("Enter the viewpoint index: ")
+                try:
+                    vp_idx = int(vp_idx)
+                except:
+                    print("Please enter a number")
+                    continue
+
                 mode_flag = input("Enter 'p' for path data collection, 'g' for gimbal data collection: ")
                 if mode_flag == 'p':
-                    self.save_data_path(f"/home/uav/m2g_vln_car/datasets/path/{exp_name}", vp_idx)
+                    self.save_data_path(f"/home/uav/m2g_vln_car/datasets/slam/path/{exp_name}", vp_idx)
                 elif mode_flag == 'g':
-                    self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/gimbal/{exp_name}", TARGET_ANGLE_LIST, vp_idx)
-                    vp_idx += 1
+                    self.save_data_gimbal(f"/home/uav/m2g_vln_car/datasets/slam/gimbal/{exp_name}", TARGET_ANGLE_LIST, vp_idx)
                 else:
-                    print("Please enter 'l' or 'g'")      
+                    print("Please enter 'p' or 'g'")      
             else:
                 print('Enter "y" to start the data collection')
 
